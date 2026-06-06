@@ -11,6 +11,8 @@ import {
   useMap,
   useMapEvents,
 } from "react-leaflet";
+import type { ScanResult } from "@/app/api/streetview/scan/route";
+import { OPPORTUNITY_STYLES } from "@/lib/bulan";
 import type { LatLng } from "@/lib/route";
 import "leaflet/dist/leaflet.css";
 
@@ -21,6 +23,7 @@ type RouteMapProps = {
   start: LatLng | null;
   end: LatLng | null;
   routeCoordinates: LatLng[];
+  scanResults?: ScanResult[];
   pickingMode: PickingMode;
   onMapClick: (point: LatLng) => void;
 };
@@ -69,6 +72,7 @@ export default function RouteMap({
   start,
   end,
   routeCoordinates,
+  scanResults = [],
   pickingMode,
   onMapClick,
 }: RouteMapProps) {
@@ -94,9 +98,37 @@ export default function RouteMap({
       {polylinePositions.length > 1 && (
         <Polyline
           positions={polylinePositions}
-          pathOptions={{ color: "#059669", weight: 5, opacity: 0.85 }}
+          pathOptions={{ color: "#d97706", weight: 5, opacity: 0.85 }}
         />
       )}
+
+      {scanResults
+        .filter((result) => result.status === "OK" && result.detection)
+        .map((result) => {
+          const type = result.detection!.objectType;
+          const style = OPPORTUNITY_STYLES[type];
+
+          return (
+            <CircleMarker
+              key={`scan-${result.index}`}
+              center={[result.lat, result.lng]}
+              radius={7}
+              pathOptions={{
+                color: "#ffffff",
+                weight: 2,
+                fillColor: style.color,
+                fillOpacity: 0.95,
+              }}
+            >
+              <Tooltip direction="top" offset={[0, -6]}>
+                {style.label}
+                {result.detection?.caption
+                  ? ` — ${result.detection.caption.slice(0, 48)}`
+                  : ""}
+              </Tooltip>
+            </CircleMarker>
+          );
+        })}
 
       {start && (
         <CircleMarker

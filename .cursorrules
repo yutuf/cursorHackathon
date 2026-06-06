@@ -4,6 +4,33 @@ You are an expert AI agent specializing in Next.js, Go (Golang), Expo, Hugging F
 
 **Event:** Cursor Hackathon — AI-Driven Kentsel Çözümle | June 6, 2026 | Dozze Coffee Başakşehir
 
+**Product:** **Bulan** — AI-powered commercial location intelligence for entrepreneurs.
+
+---
+
+## 🎯 0. PRODUCT VISION — BULAN
+
+**Target user:** Entrepreneur or investor looking to open a business (coffee shop, electrician, retail, etc.)
+
+**Core job:** Draw an area on the map → scan streets → discover commercial opportunities.
+
+**Detect and classify from Street View imagery (inanimate objects only):**
+- **Active shops** — operating businesses with visible signage
+- **Competitors** — same-category businesses nearby (e.g. other coffee shops)
+- **For rent** — "Kiralık" / rental signs on storefronts
+- **For sale** — "Satılık" / sale signs
+- **Vacant / empty** — shuttered, boarded, or clearly unoccupied commercial units
+- **Signboards** — business type inference from signage text/logos (no person/vehicle analysis)
+
+**Output for the user:**
+- Map pins color-coded by opportunity type
+- Corridor report: "3 vacant units, 2 for-rent, 5 competitors in 800m"
+- Filter by business category before scan (coffee, electrician, etc.)
+
+**Demo narrative:** Entrepreneur picks Başakşehir corridor → scans → Bulan surfaces empty units and competitor density → user picks best spot to open a coffee shop.
+
+**KVKK-safe:** Only storefronts, signs, and building facades — never identity or tracking.
+
 ---
 
 ## 💻 1. TECH STACK & ARCHITECTURE RULES
@@ -34,7 +61,7 @@ You are an expert AI agent specializing in Next.js, Go (Golang), Expo, Hugging F
 
 ### AI Models & Datasets — Hugging Face (mandatory)
 - All AI models and datasets must come from **Hugging Face**.
-- Use models suited for urban object detection only (signboards, road damage, trash bins, public infrastructure).
+- Use models suited for storefront/sign detection and commercial vacancy classification (signboards, shop fronts, rental/sale signage).
 - Inference runs in Go backend after KVKK anonymization — not on raw images.
 
 ### External Data — Google Street View API
@@ -62,7 +89,7 @@ When implementing urban object detection, always follow this order:
 4. Run Hugging Face model on anonymized images
 5. Return detections with geo-coordinates → pin on map + corridor report
 
-Detection output must include: `lat`, `lng`, `distanceM`, `heading`, `objectType`, `confidence`, optional `bbox`.
+Detection output must include: `lat`, `lng`, `distanceM`, `heading`, `objectType` (shop | vacant | for_rent | for_sale | competitor), `businessCategory`, `confidence`, optional `bbox`, optional `signText`.
 
 ---
 

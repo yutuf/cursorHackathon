@@ -1,13 +1,9 @@
-import RouteScanner from "@/app/components/RouteScanner";
-import StreetViewTester from "@/app/components/StreetViewTester";
+import BulanScanner from "@/app/components/BulanScanner";
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-zinc-50">
-      <RouteScanner />
-      <div className="border-t border-zinc-200 bg-white">
-        <StreetViewTester />
-      </div>
+    <div className="min-h-screen bg-gradient-to-b from-amber-50/80 to-zinc-50">
+      <BulanScanner />
     </div>
   );
 }

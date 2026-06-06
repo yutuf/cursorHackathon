@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  classifyFromCaption,
+  summarizeOpportunities,
+  type BusinessCategory,
+  type DetectionResult,
+  type OpportunitySummary,
+} from "@/lib/bulan";
+import { captionStreetViewImage } from "@/lib/huggingface";
+import {
   buildStreetViewUrl,
   fetchStreetViewMetadata,
   getApiKey,
@@ -16,6 +24,7 @@ type ScanWaypoint = {
 type ScanRequestBody = {
   waypoints?: ScanWaypoint[];
   includeImages?: boolean;
+  businessCategory?: BusinessCategory;
 };
 
 export type ScanResult = {
@@ -27,9 +36,19 @@ export type ScanResult = {
   status: string;
   metadata: StreetViewMetadata | null;
   imageBase64: string | null;
+  detection: DetectionResult | null;
 };
 
 const MAX_WAYPOINTS = 25;
+const VALID_CATEGORIES: BusinessCategory[] = [
+  "coffee_shop",
+  "electrician",
+  "restaurant",
+  "retail",
+  "barber",
+  "pharmacy",
+  "grocery",
+];
 
 export async function POST(request: NextRequest) {
   let body: ScanRequestBody;
@@ -41,6 +60,11 @@ export async function POST(request: NextRequest) {
   }
 
   const waypoints = body.waypoints ?? [];
+  const businessCategory = VALID_CATEGORIES.includes(
+    body.businessCategory as BusinessCategory,
+  )
+    ? (body.businessCategory as BusinessCategory)
+    : "coffee_shop";
 
   if (waypoints.length === 0) {
     return NextResponse.json({ error: "No waypoints provided." }, { status: 400 });
@@ -71,6 +95,7 @@ export async function POST(request: NextRequest) {
 
     let metadata: StreetViewMetadata | null = null;
     let imageBase64: string | null = null;
+    let detection: DetectionResult | null = null;
     let status = "ERROR";
 
     try {
@@ -96,6 +121,18 @@ export async function POST(request: NextRequest) {
         if (imageResponse.ok) {
           const buffer = Buffer.from(await imageResponse.arrayBuffer());
           imageBase64 = `data:${imageResponse.headers.get("content-type") ?? "image/jpeg"};base64,${buffer.toString("base64")}`;
+
+          const caption = await captionStreetViewImage(imageBase64);
+          if (caption) {
+            detection = classifyFromCaption(caption, businessCategory);
+          } else {
+            detection = {
+              objectType: "unknown",
+              businessCategory,
+              confidence: 0.2,
+              caption: "Detection unavailable — add HUGGINGFACE_API_KEY for AI classification",
+            };
+          }
         }
       }
     } catch {
@@ -111,18 +148,25 @@ export async function POST(request: NextRequest) {
       status,
       metadata,
       imageBase64,
+      detection,
     });
   }
 
   const available = results.filter((result) => result.status === "OK").length;
+  const detections = results
+    .map((result) => result.detection)
+    .filter((value): value is DetectionResult => value !== null);
+  const opportunities = summarizeOpportunities(detections);
 
   return NextResponse.json({
     results,
+    businessCategory,
     summary: {
       total: results.length,
       available,
       unavailable: results.length - available,
       apiCallsUsed: results.length + (includeImages ? available : 0),
+      opportunities,
     },
   });
 }

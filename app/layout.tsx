@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Cursor Hackathon — Street View Dev",
+  title: "Bulan — Find Your Next Business Location",
   description:
-    "Development workspace for Google Street View Static API integration",
+    "AI-powered commercial location intelligence for entrepreneurs. Scan streets, find vacant units, and map competitors.",
 };
 
 export default function RootLayout({
