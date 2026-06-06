@@ -80,7 +80,7 @@ Navigator shows `engine live` when Go is reachable.
 
 Go **must** be online for the jury. **Koyeb/Render ask for payment** — use **Hugging Face Spaces** (free CPU, no credit card).
 
-See [`DEPLOY.md`](DEPLOY.md) for full steps.
+See [`docs/DEPLOY.md`](docs/DEPLOY.md) for full steps.
 
 ### 1) Go backend — Hugging Face Spaces (free)
 
@@ -142,18 +142,20 @@ Only landmarks **with a Google photo** count toward scoring and UI. No photo →
 - Uses Google imagery (faces/plates already blurred by Google)
 - No face recognition, plate reading, or identity profiling
 - No raw image storage
-- See [KVKK_DATA_DELETION.md](KVKK_DATA_DELETION.md)
+- See [KVKK_DATA_DELETION.md](docs/KVKK_DATA_DELETION.md)
 
 ## Tech stack
 
 | Layer | Tech | Host |
 |-------|------|------|
 | Web | Next.js 16, TypeScript, Tailwind | Vercel |
-| Engine | Go `monumation-api` | Render / local |
+| Engine | Go `monumation-api` | HF Spaces / local |
 | AI | Hugging Face ViT + DETR | HF API |
 | Maps | Google Directions, Places, Street View | Google Cloud |
 
 ## Learn more
 
-- [Hackathon announcement](announcement.txt)
-- [Hackathon rules](RULES.txt)
+- [Pitch deck](docs/pitch/MonumationPitchDeck.pptx)
+- [Project docs](docs/README.md)
+- [Hackathon announcement](docs/announcement.txt)
+- [Hackathon rules](docs/RULES.txt)

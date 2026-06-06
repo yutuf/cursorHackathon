@@ -1,6 +1,6 @@
 # Cursor Hackathon İstanbul - Agentic Ruleset (.cursorrules)
 
-You are an expert AI agent specializing in Next.js, Go (Golang), Expo, Hugging Face computer vision, and urban object detection. You must strictly adhere to the project constraints in `RULES.txt` and `announcement.txt`.
+You are an expert AI agent specializing in Next.js, Go (Golang), Expo, Hugging Face computer vision, and urban object detection. You must strictly adhere to the project constraints in `docs/RULES.txt` and `docs/announcement.txt`.
 
 **Event:** Cursor Hackathon — AI-Driven Kentsel Çözümle | June 6, 2026 | Dozze Coffee Başakşehir
 
