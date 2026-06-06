@@ -9,3 +9,4 @@
 | [announcement.txt](announcement.txt) | Cursor Hackathon Istanbul brief |
 | [RULES.txt](RULES.txt) | Hackathon agent rules |
 | [PRESENTATION_AI_DEV_CONTEXT.md](PRESENTATION_AI_DEV_CONTEXT.md) | Sunum — AI-assisted development context dump |
+| [PRESENTATION_SCRIPT.md](PRESENTATION_SCRIPT.md) | Jüri sunum konuşma metni (~3 dk) |
