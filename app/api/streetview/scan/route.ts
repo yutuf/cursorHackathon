@@ -1,15 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
-  classifyFromCaption,
+  classifyStorefront,
   summarizeOpportunities,
   type BusinessCategory,
   type DetectionResult,
 } from "@/lib/bulan";
 import {
   analyzeStorefrontImage,
+  analyzeStorefrontQuick,
   scoreCaptureQuality,
+  type QuickStorefrontAnalysis,
 } from "@/lib/huggingface";
 import type { StorefrontSide } from "@/lib/route";
+import { verifyDetectionWithPlaces } from "@/lib/places-verify";
 import {
   buildStreetViewUrl,
   fetchStreetViewMetadata,
@@ -70,7 +73,7 @@ type CaptureCandidate = {
   captureLat: number;
   captureLng: number;
   qualityScore: number;
-  analysisCaption: string;
+  quickAnalysis: QuickStorefrontAnalysis | null;
 };
 
 async function fetchStorefrontCandidate(
@@ -102,10 +105,8 @@ async function fetchStorefrontCandidate(
   const buffer = Buffer.from(await imageResponse.arrayBuffer());
   const imageBase64 = `data:${imageResponse.headers.get("content-type") ?? "image/jpeg"};base64,${buffer.toString("base64")}`;
 
-  const analysis = await analyzeStorefrontImage(imageBase64);
-  const qualityScore = analysis
-    ? scoreCaptureQuality(analysis)
-    : 0;
+  const quickAnalysis = await analyzeStorefrontQuick(imageBase64);
+  const qualityScore = quickAnalysis ? scoreCaptureQuality(quickAnalysis) : 0;
 
   return {
     imageBase64,
@@ -115,7 +116,7 @@ async function fetchStorefrontCandidate(
     captureLat,
     captureLng,
     qualityScore,
-    analysisCaption: analysis?.caption ?? "",
+    quickAnalysis,
   };
 }
 
@@ -157,6 +158,8 @@ async function captureBestStorefront(
 
   return best;
 }
+
+export const maxDuration = 60;
 
 export async function POST(request: NextRequest) {
   let body: ScanRequestBody;
@@ -233,9 +236,28 @@ export async function POST(request: NextRequest) {
           captureLng = capture.captureLng;
           status = "OK";
 
-          if (capture.analysisCaption) {
-            detection = classifyFromCaption(
-              capture.analysisCaption,
+          const analysis = capture.quickAnalysis
+            ? await analyzeStorefrontImage(
+                capture.imageBase64,
+                capture.quickAnalysis,
+              )
+            : null;
+
+          if (analysis) {
+            detection = classifyStorefront({
+              caption: analysis.caption,
+              labelScores: analysis.labelScores,
+              detrLabels: analysis.detrLabels,
+              signText: analysis.signText,
+              businessCategory,
+            });
+
+            const verifyLat = metadata?.location?.lat ?? captureLat;
+            const verifyLng = metadata?.location?.lng ?? captureLng;
+            detection = await verifyDetectionWithPlaces(
+              detection,
+              verifyLat,
+              verifyLng,
               businessCategory,
             );
           } else if (!hasHfKey) {

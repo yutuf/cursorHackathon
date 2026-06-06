@@ -21,6 +21,9 @@ export type DetectionResult = {
   confidence: number;
   caption?: string;
   signText?: string;
+  placesName?: string;
+  placesTypes?: string[];
+  placesVerified?: boolean;
 };
 
 export type OpportunitySummary = {
@@ -164,104 +167,309 @@ function getCategoryKeywords(category: BusinessCategory): string[] {
   );
 }
 
-export function classifyFromCaption(
-  caption: string,
-  businessCategory: BusinessCategory,
-): DetectionResult {
-  const text = caption.trim();
+export type LabelScore = {
+  label: string;
+  score: number;
+};
 
-  if (!text) {
+export type StorefrontClassificationInput = {
+  caption: string;
+  labelScores?: LabelScore[];
+  detrLabels?: string[];
+  signText?: string;
+  businessCategory: BusinessCategory;
+};
+
+/** ImageNet labels that ViT over-predicts on Street View — never treat as shops. */
+const UNRELIABLE_VIT_LABELS = [
+  "tobacco shop",
+  "tobacco",
+  "convenience store",
+  "grocery store",
+  "bookshop",
+  "bookstore",
+  "shop",
+  "store",
+  "market",
+  "restaurant",
+  "bakery",
+  "barbershop",
+  "pharmacy",
+  "drugstore",
+];
+
+const NON_STOREFRONT_SCENE_LABELS = [
+  "mosque",
+  "palace",
+  "monastery",
+  "triumphal arch",
+  "fountain",
+  "obelisk",
+  "pedestal",
+  "bell cote",
+  "vault",
+  "chainlink fence",
+  "fence",
+  "stone wall",
+  "wall",
+  "brick",
+  "rail",
+  "bench",
+  "seashore",
+  "promontory",
+  "patio",
+  "sundial",
+  "megalith",
+  "cliff",
+  "pier",
+];
+
+const MIN_VIT_LABEL_CONFIDENCE = 0.12;
+
+const STOREFRONT_TYPE_LABELS: Record<BusinessCategory, string[]> = {
+  coffee_shop: ["coffee", "espresso", "cafe"],
+  electrician: ["hardware", "tool"],
+  restaurant: ["restaurant", "bakery", "delicatessen", "buffet", "diner"],
+  retail: ["bookshop", "library", "shoe", "confectionery", "store"],
+  barber: ["barbershop", "barber"],
+  pharmacy: ["pharmacy", "drugstore", "chemist"],
+  grocery: ["grocery", "supermarket", "confectionery", "market"],
+};
+
+const VEHICLE_DOMINANCE_LABELS = [
+  "ambulance",
+  "minivan",
+  "minibus",
+  "van",
+  "wagon",
+  "truck",
+  "police",
+  "moving van",
+  "garbage truck",
+  "fire engine",
+  "limousine",
+  "jeep",
+  "convertible",
+  "sports car",
+  "pickup",
+  "parking meter",
+];
+
+const DETR_ONLY_OBJECT_LABELS = new Set([
+  "person",
+  "car",
+  "truck",
+  "bus",
+  "motorcycle",
+  "bench",
+  "bird",
+  "traffic light",
+  "fire hydrant",
+]);
+
+function isVehicleDominated(labelScores: LabelScore[]): boolean {
+  const top = labelScores.slice(0, 8);
+  const vehicleHits = top.filter((item) =>
+    VEHICLE_DOMINANCE_LABELS.some((vehicle) =>
+      item.label.toLowerCase().includes(vehicle),
+    ),
+  ).length;
+
+  return vehicleHits >= 5;
+}
+
+function isUnreliableVitLabel(label: string): boolean {
+  const normalized = normalizeText(label);
+  return UNRELIABLE_VIT_LABELS.some((blocked) =>
+    normalized.includes(normalizeText(blocked)),
+  );
+}
+
+function isNonStorefrontScene(
+  labelScores: LabelScore[],
+  detrLabels: string[],
+): boolean {
+  const top = labelScores[0];
+  if (top && top.score >= 0.2) {
+    const normalized = normalizeText(top.label);
+    if (
+      NON_STOREFRONT_SCENE_LABELS.some((scene) =>
+        normalized.includes(normalizeText(scene)),
+      )
+    ) {
+      return true;
+    }
+  }
+
+  if (detrLabels.length > 0) {
+    const onlyStreetObjects = detrLabels.every((label) =>
+      DETR_ONLY_OBJECT_LABELS.has(label),
+    );
+    if (onlyStreetObjects) return true;
+  }
+
+  return false;
+}
+
+function matchCategoryInText(
+  text: string,
+  businessCategory: BusinessCategory,
+): string | undefined {
+  const keywords = [
+    ...getCategoryKeywords(businessCategory),
+    ...STOREFRONT_TYPE_LABELS[businessCategory],
+  ];
+
+  return extractSignHint(text, keywords);
+}
+
+function matchCategoryInLabels(
+  labelScores: LabelScore[],
+  businessCategory: BusinessCategory,
+): { label: string; score: number } | null {
+  const keywords = [
+    ...getCategoryKeywords(businessCategory),
+    ...STOREFRONT_TYPE_LABELS[businessCategory],
+  ];
+
+  for (const item of labelScores) {
+    if (item.score < MIN_VIT_LABEL_CONFIDENCE) break;
+    if (isUnreliableVitLabel(item.label)) continue;
+
+    const normalized = normalizeText(item.label);
+    const hit = keywords.find((keyword) =>
+      normalized.includes(normalizeText(keyword)),
+    );
+
+    if (hit) {
+      return { label: item.label, score: item.score };
+    }
+  }
+
+  return null;
+}
+
+function buildCombinedText(input: StorefrontClassificationInput): string {
+  return [
+    input.caption,
+    input.signText,
+    ...(input.labelScores ?? []).map((item) => item.label),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+}
+
+export function classifyStorefront(
+  input: StorefrontClassificationInput,
+): DetectionResult {
+  const {
+    caption,
+    labelScores = [],
+    detrLabels = [],
+    signText,
+    businessCategory,
+  } = input;
+  const combinedText = buildCombinedText(input);
+
+  if (!combinedText) {
     return {
       objectType: "unknown",
       businessCategory,
       confidence: 0.2,
-      caption: text,
+      caption,
+      signText,
     };
   }
 
-  if (containsKeyword(text, RENT_KEYWORDS)) {
+  const topLabel = labelScores[0];
+  if (
+    isNonStorefrontScene(labelScores, detrLabels) ||
+    (topLabel &&
+      topLabel.score >= 0.15 &&
+      isUnreliableVitLabel(topLabel.label))
+  ) {
+    return {
+      objectType: "unknown",
+      businessCategory,
+      confidence: 0.5,
+      caption,
+      signText,
+    };
+  }
+
+  if (containsKeyword(combinedText, RENT_KEYWORDS)) {
     return {
       objectType: "for_rent",
       businessCategory,
-      confidence: 0.82,
-      caption: text,
-      signText: extractSignHint(text, RENT_KEYWORDS),
+      confidence: signText ? 0.9 : 0.82,
+      caption,
+      signText: extractSignHint(combinedText, RENT_KEYWORDS) ?? signText,
     };
   }
 
-  if (containsKeyword(text, SALE_KEYWORDS)) {
+  if (containsKeyword(combinedText, SALE_KEYWORDS)) {
     return {
       objectType: "for_sale",
       businessCategory,
-      confidence: 0.8,
-      caption: text,
-      signText: extractSignHint(text, SALE_KEYWORDS),
+      confidence: signText ? 0.88 : 0.8,
+      caption,
+      signText: extractSignHint(combinedText, SALE_KEYWORDS) ?? signText,
     };
   }
 
-  if (containsKeyword(text, VACANT_KEYWORDS)) {
+  if (containsKeyword(combinedText, VACANT_KEYWORDS)) {
     return {
       objectType: "vacant",
       businessCategory,
       confidence: 0.76,
-      caption: text,
+      caption,
+      signText,
     };
   }
 
-  const categoryKeywords = getCategoryKeywords(businessCategory);
-  if (businessCategory === "pharmacy" && containsKeyword(text, ["pharmacy", "drugstore", "eczane"])) {
+  const signMatch = signText ? matchCategoryInText(signText, businessCategory) : undefined;
+  if (signMatch) {
     return {
       objectType: "competitor",
       businessCategory,
-      confidence: 0.8,
-      caption: text,
-      signText: "pharmacy",
+      confidence: 0.92,
+      caption,
+      signText: signMatch,
     };
   }
 
-  if (containsKeyword(text, categoryKeywords)) {
+  const labelMatch = matchCategoryInLabels(labelScores, businessCategory);
+  if (labelMatch) {
     return {
       objectType: "competitor",
       businessCategory,
-      confidence: 0.74,
-      caption: text,
-      signText: extractSignHint(text, categoryKeywords),
+      confidence: Math.min(0.9, 0.68 + labelMatch.score),
+      caption,
+      signText: labelMatch.label,
     };
   }
 
-  const shopSignals = [
-    "store",
-    "shop",
-    "sign",
-    "storefront",
-    "business",
-    "restaurant",
-    "office",
-    "building with",
-    "facade",
-    "awning",
-    "display",
-    "window",
-    "pharmacy",
-    "drugstore",
-    "library",
-    "bookshop",
-    "bakery",
-    "barbershop",
-    "salon",
-    "market",
-    "tobacco",
-    "grocery",
-    "street scene",
-    "visible objects",
-  ];
-
-  if (containsKeyword(text, shopSignals)) {
+  if (
+    signText &&
+    containsKeyword(combinedText, getCategoryKeywords(businessCategory))
+  ) {
     return {
-      objectType: "shop",
+      objectType: "competitor",
       businessCategory,
-      confidence: 0.62,
-      caption: text,
+      confidence: 0.88,
+      caption,
+      signText: matchCategoryInText(combinedText, businessCategory),
+    };
+  }
+
+  if (isVehicleDominated(labelScores)) {
+    return {
+      objectType: "unknown",
+      businessCategory,
+      confidence: 0.4,
+      caption,
+      signText,
     };
   }
 
@@ -269,8 +477,16 @@ export function classifyFromCaption(
     objectType: "unknown",
     businessCategory,
     confidence: 0.35,
-    caption: text,
+    caption,
+    signText,
   };
+}
+
+export function classifyFromCaption(
+  caption: string,
+  businessCategory: BusinessCategory,
+): DetectionResult {
+  return classifyStorefront({ caption, businessCategory });
 }
 
 export function summarizeOpportunities(

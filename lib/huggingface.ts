@@ -1,12 +1,21 @@
 const HF_ROUTER = "https://router.huggingface.co/hf-inference/models";
 const VIT_MODEL = "google/vit-base-patch16-224";
 const DETR_MODEL = "facebook/detr-resnet-50";
+const OCR_MODEL = "microsoft/trocr-base-printed";
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 2000;
+
+export type LabelScore = {
+  label: string;
+  score: number;
+};
 
 export type StorefrontAnalysis = {
   caption: string;
   labels: string[];
+  labelScores: LabelScore[];
+  detrLabels: string[];
+  signText?: string;
   vehicleCount: number;
   provider: "huggingface-router";
 };
@@ -86,10 +95,35 @@ function countForegroundVehicles(
   }).length;
 }
 
-function buildCaption(vit: VitResult, detr: DetrResult): string {
+const STOREFRONT_LABEL_PATTERN =
+  /pharmacy|drugstore|chemist|eczane|shop|store|restaurant|barber|cafe|market|grocery|bookshop|bakery|confectionery|delicatessen/i;
+
+export type QuickStorefrontAnalysis = {
+  caption: string;
+  labels: string[];
+  labelScores: LabelScore[];
+  detrLabels: string[];
+  vehicleCount: number;
+};
+
+function normalizeVitLabel(label: string): string {
+  return label.replace(/_/g, " ");
+}
+
+function buildCaption(
+  vit: VitResult,
+  detr: DetrResult,
+  signText?: string,
+): string {
   const topLabels = vit
     .slice(0, 5)
-    .map((item) => item.label.replace(/_/g, " "))
+    .map((item) => normalizeVitLabel(item.label))
+    .join(", ");
+
+  const storefrontCues = vit
+    .filter((item) => STOREFRONT_LABEL_PATTERN.test(item.label))
+    .slice(0, 4)
+    .map((item) => normalizeVitLabel(item.label))
     .join(", ");
 
   const objects = detr
@@ -98,16 +132,33 @@ function buildCaption(vit: VitResult, detr: DetrResult): string {
     .map((item) => item.label)
     .join(", ");
 
-  const parts = [`street scene with ${topLabels}`];
+  const parts = [`scene labels: ${topLabels}`];
+  if (storefrontCues) parts.push(`storefront cues: ${storefrontCues}`);
+  if (signText?.trim()) parts.push(`sign text: ${signText.trim()}`);
   if (objects) parts.push(`visible objects: ${objects}`);
   return parts.join("; ");
 }
 
-export async function analyzeStorefrontImage(
-  imageBase64: string,
-): Promise<StorefrontAnalysis | null> {
-  const buffer = imageBuffer(imageBase64);
+async function extractSignText(buffer: Buffer): Promise<string | undefined> {
+  const result = await queryRouter<Array<{ generated_text?: string }> | { generated_text?: string }>(
+    OCR_MODEL,
+    buffer,
+    "image/jpeg",
+  );
 
+  if (!result) return undefined;
+
+  const text = Array.isArray(result)
+    ? result[0]?.generated_text
+    : result.generated_text;
+
+  const cleaned = text?.trim();
+  return cleaned || undefined;
+}
+
+async function analyzeQuickFromBuffer(
+  buffer: Buffer,
+): Promise<QuickStorefrontAnalysis | null> {
   const [vit, detr] = await Promise.all([
     queryRouter<VitResult>(VIT_MODEL, buffer, "application/octet-stream"),
     queryRouter<DetrResult>(DETR_MODEL, buffer, "image/jpeg"),
@@ -115,13 +166,52 @@ export async function analyzeStorefrontImage(
 
   if (!vit?.length) return null;
 
-  const labels = vit.map((item) => item.label.replace(/_/g, " "));
-  const vehicleCount = detr ? countForegroundVehicles(detr) : 0;
+  const labelScores = vit.map((item) => ({
+    label: normalizeVitLabel(item.label),
+    score: item.score,
+  }));
+
+  const detrLabels = (detr ?? [])
+    .filter((item) => item.score > 0.45)
+    .map((item) => item.label);
 
   return {
     caption: buildCaption(vit, detr ?? []),
-    labels,
-    vehicleCount,
+    labels: labelScores.map((item) => item.label),
+    labelScores,
+    detrLabels,
+    vehicleCount: detr ? countForegroundVehicles(detr) : 0,
+  };
+}
+
+/** Fast ViT + DETR pass for capture-side selection (no OCR). */
+export async function analyzeStorefrontQuick(
+  imageBase64: string,
+): Promise<QuickStorefrontAnalysis | null> {
+  return analyzeQuickFromBuffer(imageBuffer(imageBase64));
+}
+
+/** Full analysis with sign OCR — run once on the winning capture. */
+export async function analyzeStorefrontImage(
+  imageBase64: string,
+  quick?: QuickStorefrontAnalysis,
+): Promise<StorefrontAnalysis | null> {
+  const buffer = imageBuffer(imageBase64);
+  const base = quick ?? (await analyzeQuickFromBuffer(buffer));
+  if (!base) return null;
+
+  const signText = await extractSignText(buffer);
+  const caption = signText
+    ? `${base.caption}; sign text: ${signText.trim()}`
+    : base.caption;
+
+  return {
+    caption,
+    labels: base.labels,
+    labelScores: base.labelScores,
+    detrLabels: base.detrLabels,
+    signText,
+    vehicleCount: base.vehicleCount,
     provider: "huggingface-router",
   };
 }
@@ -133,22 +223,34 @@ export async function captionStreetViewImage(
   return analysis?.caption ?? null;
 }
 
-export function scoreCaptureQuality(analysis: StorefrontAnalysis): number {
-  const labelText = analysis.labels.join(" ").toLowerCase();
+export function scoreCaptureQuality(
+  analysis: Pick<
+    StorefrontAnalysis,
+    "labelScores" | "vehicleCount" | "signText"
+  >,
+): number {
   let score = 50;
 
   if (analysis.vehicleCount === 0) score += 30;
   else score -= analysis.vehicleCount * 15;
 
-  if (
-    /store|shop|restaurant|pharmacy|barber|cafe|market|library|bookshop|bakery/.test(
-      labelText,
-    )
-  ) {
-    score += 20;
+  const hasStorefrontLabel = analysis.labelScores.some(
+    (item) =>
+      item.score >= 0.03 && STOREFRONT_LABEL_PATTERN.test(item.label),
+  );
+  if (hasStorefrontLabel) score += 20;
+
+  if (analysis.signText && STOREFRONT_LABEL_PATTERN.test(analysis.signText)) {
+    score += 25;
   }
 
-  if (/road|street|alley|sidewalk|building|house/.test(labelText)) {
+  if (
+    analysis.labelScores.some(
+      (item) =>
+        item.score >= 0.03 &&
+        /road|street|alley|sidewalk|building|house/.test(item.label),
+    )
+  ) {
     score += 10;
   }
 

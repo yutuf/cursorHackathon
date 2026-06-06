@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bulan — Find Your Next Business Location",
+  title: "Bulan AI — Neighborhood Revitalization Index",
   description:
-    "AI-powered commercial location intelligence for entrepreneurs. Scan streets, find vacant units, and map competitors.",
+    "KVKK-compliant urban economic mapping for municipalities and entrepreneurs. Vacancy tracking, supply-gap analysis, and smart-city planning from public Street View imagery.",
 };
 
 export default function RootLayout({

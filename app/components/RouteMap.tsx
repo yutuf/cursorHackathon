@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import L from "leaflet";
 import {
   CircleMarker,
   MapContainer,
-  Polyline,
+  Rectangle,
   TileLayer,
   Tooltip,
   useMap,
@@ -13,77 +13,112 @@ import {
 } from "react-leaflet";
 import type { ScanResult } from "@/app/api/streetview/scan/route";
 import { OPPORTUNITY_STYLES } from "@/lib/bulan";
+import type { AreaBounds } from "@/lib/area";
+import { normalizeBounds } from "@/lib/area";
 import type { LatLng } from "@/lib/route";
 import "leaflet/dist/leaflet.css";
 
-type PickingMode = "start" | "end";
-
 type RouteMapProps = {
   center: LatLng;
-  start: LatLng | null;
-  end: LatLng | null;
-  routeCoordinates: LatLng[];
+  bounds: AreaBounds | null;
+  previewBounds: AreaBounds | null;
   scanResults?: ScanResult[];
-  pickingMode: PickingMode;
-  onMapClick: (point: LatLng) => void;
+  onBoundsDrawn: (bounds: AreaBounds) => void;
+  onBoundsPreview?: (bounds: AreaBounds | null) => void;
 };
 
-function MapClickHandler({
-  pickingMode,
-  onMapClick,
+function AreaDrawHandler({
+  onBoundsDrawn,
+  onBoundsPreview,
 }: {
-  pickingMode: PickingMode;
-  onMapClick: (point: LatLng) => void;
+  onBoundsDrawn: (bounds: AreaBounds) => void;
+  onBoundsPreview?: (bounds: AreaBounds | null) => void;
 }) {
+  const dragStart = useRef<L.LatLng | null>(null);
+  const map = useMap();
+
   useMapEvents({
-    click(event) {
-      onMapClick({
-        lat: event.latlng.lat,
-        lng: event.latlng.lng,
-      });
+    mousedown(event) {
+      dragStart.current = event.latlng;
+      map.dragging.disable();
+      map.getContainer().style.cursor = "crosshair";
+    },
+    mousemove(event) {
+      if (!dragStart.current) return;
+      onBoundsPreview?.(
+        normalizeBounds(
+          { lat: dragStart.current.lat, lng: dragStart.current.lng },
+          { lat: event.latlng.lat, lng: event.latlng.lng },
+        ),
+      );
+    },
+    mouseup(event) {
+      if (!dragStart.current) return;
+
+      const bounds = normalizeBounds(
+        { lat: dragStart.current.lat, lng: dragStart.current.lng },
+        { lat: event.latlng.lat, lng: event.latlng.lng },
+      );
+
+      dragStart.current = null;
+      map.dragging.enable();
+      map.getContainer().style.cursor = "crosshair";
+      onBoundsPreview?.(null);
+      onBoundsDrawn(bounds);
+    },
+    mouseout() {
+      if (dragStart.current) {
+        dragStart.current = null;
+        map.dragging.enable();
+      }
     },
   });
 
-  const map = useMap();
-
   useEffect(() => {
     map.getContainer().style.cursor = "crosshair";
-  }, [map, pickingMode]);
+  }, [map]);
 
   return null;
 }
 
-function FitRouteBounds({ coordinates }: { coordinates: LatLng[] }) {
+function FitAreaBounds({ bounds }: { bounds: AreaBounds | null }) {
   const map = useMap();
 
   useEffect(() => {
-    if (coordinates.length < 2) return;
-    const bounds = L.latLngBounds(
-      coordinates.map((point) => [point.lat, point.lng]),
+    if (!bounds) return;
+    map.fitBounds(
+      [
+        [bounds.south, bounds.west],
+        [bounds.north, bounds.east],
+      ],
+      { padding: [40, 40] },
     );
-    map.fitBounds(bounds, { padding: [40, 40] });
-  }, [coordinates, map]);
+  }, [bounds, map]);
 
   return null;
+}
+
+function boundsToLeaflet(bounds: AreaBounds): L.LatLngBoundsExpression {
+  return [
+    [bounds.south, bounds.west],
+    [bounds.north, bounds.east],
+  ];
 }
 
 export default function RouteMap({
   center,
-  start,
-  end,
-  routeCoordinates,
+  bounds,
+  previewBounds,
   scanResults = [],
-  pickingMode,
-  onMapClick,
+  onBoundsDrawn,
+  onBoundsPreview,
 }: RouteMapProps) {
-  const polylinePositions = routeCoordinates.map(
-    (point) => [point.lat, point.lng] as [number, number],
-  );
+  const activeBounds = previewBounds ?? bounds;
 
   return (
     <MapContainer
       center={[center.lat, center.lng]}
-      zoom={13}
+      zoom={15}
       className="h-full w-full rounded-2xl"
       scrollWheelZoom
     >
@@ -92,13 +127,21 @@ export default function RouteMap({
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
 
-      <MapClickHandler pickingMode={pickingMode} onMapClick={onMapClick} />
-      <FitRouteBounds coordinates={routeCoordinates} />
+      <AreaDrawHandler
+        onBoundsDrawn={onBoundsDrawn}
+        onBoundsPreview={onBoundsPreview}
+      />
+      <FitAreaBounds bounds={bounds} />
 
-      {polylinePositions.length > 1 && (
-        <Polyline
-          positions={polylinePositions}
-          pathOptions={{ color: "#d97706", weight: 5, opacity: 0.85 }}
+      {activeBounds && (
+        <Rectangle
+          bounds={boundsToLeaflet(activeBounds)}
+          pathOptions={{
+            color: previewBounds ? "#f59e0b" : "#d97706",
+            weight: 2,
+            fillColor: "#fbbf24",
+            fillOpacity: previewBounds ? 0.15 : 0.22,
+          }}
         />
       )}
 
@@ -129,40 +172,6 @@ export default function RouteMap({
             </CircleMarker>
           );
         })}
-
-      {start && (
-        <CircleMarker
-          center={[start.lat, start.lng]}
-          radius={10}
-          pathOptions={{
-            color: "#ffffff",
-            weight: 2,
-            fillColor: "#10b981",
-            fillOpacity: 1,
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -8]} permanent>
-            Start
-          </Tooltip>
-        </CircleMarker>
-      )}
-
-      {end && (
-        <CircleMarker
-          center={[end.lat, end.lng]}
-          radius={10}
-          pathOptions={{
-            color: "#ffffff",
-            weight: 2,
-            fillColor: "#ef4444",
-            fillOpacity: 1,
-          }}
-        >
-          <Tooltip direction="top" offset={[0, -8]} permanent>
-            End
-          </Tooltip>
-        </CircleMarker>
-      )}
     </MapContainer>
   );
 }

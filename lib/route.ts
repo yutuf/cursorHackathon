@@ -22,10 +22,98 @@ export type DrivingRoute = {
   coordinates: LatLng[];
   distanceM: number;
   durationS: number;
+  /** Step names from OSRM, used to detect highways and arterials */
+  roadNames: string[];
 };
 
+export type RouteScanWarning = {
+  code: "high_speed_road" | "long_corridor" | "arterial_road";
+  title: string;
+  message: string;
+  suggestion: string;
+};
+
+const ARTERIAL_ROAD_PATTERNS = [
+  /\botoyol\b/i,
+  /\bmotorway\b/i,
+  /\bhighway\b/i,
+  /\bexpressway\b/i,
+  /\bçevre\s*yolu\b/i,
+  /\bcevre\s*yolu\b/i,
+  /\btem\b/i,
+  /\be-?5\b/i,
+  /\be-?80\b/i,
+  /\bo-?1\b/i,
+  /\bo-?2\b/i,
+  /\btrans\s*european\b/i,
+  /\bana\s*arter\b/i,
+];
+
+/** Warn when the corridor is unlikely to yield good storefront imagery. */
+export function assessRouteForStorefrontScan(
+  route: Pick<DrivingRoute, "distanceM" | "durationS" | "roadNames">,
+  start: LatLng,
+  end: LatLng,
+): RouteScanWarning | null {
+  const avgSpeedKmh =
+    route.durationS > 0 ? (route.distanceM * 3.6) / route.durationS : 0;
+  const directM = haversineDistance(start, end);
+  const straightness =
+    route.distanceM > 0 ? directM / route.distanceM : 1;
+
+  const matchedArterial = route.roadNames.find((name) =>
+    ARTERIAL_ROAD_PATTERNS.some((pattern) => pattern.test(name)),
+  );
+
+  if (matchedArterial) {
+    return {
+      code: "arterial_road",
+      title: "Busy main road detected",
+      message: `This route follows "${matchedArterial}" — a fast commercial artery or highway.`,
+      suggestion:
+        "Draw a shorter corridor along a narrow shop-lined side street instead.",
+    };
+  }
+
+  if (avgSpeedKmh >= 42) {
+    return {
+      code: "high_speed_road",
+      title: "Fast road detected",
+      message: `Average speed is about ${Math.round(avgSpeedKmh)} km/h. Street View will mostly capture traffic and asphalt, not shop facades.`,
+      suggestion:
+        "Pick a slower commercial street with visible storefronts (under ~35 km/h).",
+    };
+  }
+
+  if (route.distanceM > 2_200) {
+    return {
+      code: "long_corridor",
+      title: "Corridor is very long",
+      message: `This scan covers ${(route.distanceM / 1000).toFixed(1)} km. Bulan samples up to 15 points — long arterials dilute results.`,
+      suggestion: "Try a 500 m–1 km stretch of dense retail streets.",
+    };
+  }
+
+  if (
+    route.distanceM > 700 &&
+    straightness > 0.96 &&
+    avgSpeedKmh >= 35
+  ) {
+    return {
+      code: "arterial_road",
+      title: "Straight commercial boulevard",
+      message:
+        "This looks like a long, straight main road. Storefronts may be set back or blocked by parked vehicles.",
+      suggestion:
+        "Scan a parallel side street where shops face the sidewalk directly.",
+    };
+  }
+
+  return null;
+}
+
 const EARTH_RADIUS_M = 6_371_000;
-const DEFAULT_SAMPLE_INTERVAL_M = 50;
+const DEFAULT_SAMPLE_INTERVAL_M = 20;
 const DEFAULT_MAX_POINTS = 15;
 const STOREFRONT_OFFSET_M = 0;
 
@@ -118,6 +206,7 @@ export async function fetchDrivingRoute(
   );
   url.searchParams.set("overview", "full");
   url.searchParams.set("geometries", "geojson");
+  url.searchParams.set("steps", "true");
 
   const response = await fetch(url.toString());
 
@@ -131,6 +220,9 @@ export async function fetchDrivingRoute(
       distance: number;
       duration: number;
       geometry: { coordinates: [number, number][] };
+      legs?: Array<{
+        steps?: Array<{ name?: string }>;
+      }>;
     }>;
     message?: string;
   };
@@ -140,11 +232,15 @@ export async function fetchDrivingRoute(
   }
 
   const route = body.routes[0];
+  const roadNames = (route.legs?.[0]?.steps ?? [])
+    .map((step) => step.name?.trim())
+    .filter((name): name is string => Boolean(name));
 
   return {
     coordinates: route.geometry.coordinates.map(([lng, lat]) => ({ lat, lng })),
     distanceM: Math.round(route.distance),
     durationS: Math.round(route.duration),
+    roadNames,
   };
 }
 
