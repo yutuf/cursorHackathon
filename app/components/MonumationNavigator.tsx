@@ -256,7 +256,7 @@ export default function MonumationNavigator() {
                 Corridor duel
               </h2>
               <p className="mt-1 text-xs italic" style={{ color: theme.inkMuted }}>
-                Same {moodMeta.label.toLowerCase()} — two paths, one winner
+                Mood-picked corridor vs blind functional path
               </p>
             </div>
             <button

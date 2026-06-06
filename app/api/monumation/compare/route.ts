@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import {
+  applyCompareScore,
   scoreCorridorFast,
   type CorridorScoreResult,
 } from "@/lib/monumation-corridor";
@@ -13,15 +14,17 @@ function poiDensityPerKm(result: CorridorScoreResult): number {
 }
 
 function pickCompareWinner(
-  good: CorridorScoreResult,
-  weak: CorridorScoreResult,
+  moodPath: CorridorScoreResult,
+  blindPath: CorridorScoreResult,
 ): "good" | "weak" {
-  if (good.summary.combinedScore !== weak.summary.combinedScore) {
-    return good.summary.combinedScore > weak.summary.combinedScore
+  if (moodPath.summary.combinedScore !== blindPath.summary.combinedScore) {
+    return moodPath.summary.combinedScore > blindPath.summary.combinedScore
       ? "good"
       : "weak";
   }
-  return poiDensityPerKm(good) >= poiDensityPerKm(weak) ? "good" : "weak";
+  return poiDensityPerKm(moodPath) >= poiDensityPerKm(blindPath)
+    ? "good"
+    : "weak";
 }
 
 export const maxDuration = 60;
@@ -42,12 +45,15 @@ export async function POST(request: NextRequest) {
   const pair = getCorridorComparePair(routeMood);
 
   try {
-    const [good, weak] = await Promise.all([
+    const [goodRaw, weakRaw] = await Promise.all([
       scoreCorridorFast(pair.good.name, pair.good.start, pair.good.end, routeMood),
       scoreCorridorFast(pair.weak.name, pair.weak.start, pair.weak.end, routeMood),
     ]);
 
+    const good = applyCompareScore(goodRaw, "mood");
+    const weak = applyCompareScore(weakRaw, "blind");
     const winner = pickCompareWinner(good, weak);
+    const delta = Math.abs(good.summary.combinedScore - weak.summary.combinedScore);
 
     const { checkGoEngineHealth } = await import("@/lib/monumation-engine");
     const goHealth = await checkGoEngineHealth();
@@ -59,20 +65,22 @@ export async function POST(request: NextRequest) {
       mode: "corridor_compare",
       routeMood,
       winner,
-      delta: Math.abs(good.summary.combinedScore - weak.summary.combinedScore),
+      delta,
       good: {
         ...good,
         tip: pair.good.tip,
-        label: "Mood corridor (recommended)",
+        label: "Mood corridor (Monumation pick)",
+        pathRole: "mood",
       },
       weak: {
         ...weak,
         tip: pair.weak.tip,
-        label: "Functional stretch (avoid)",
+        label: "Blind walk (functional path)",
+        pathRole: "blind",
       },
       pitch:
         winner === "good"
-          ? `Same mood (${routeMood}), ${good.summary.combinedScore - weak.summary.combinedScore} pts higher on the mood-matched corridor — route choice matters.`
+          ? `Google-style blind walk scores ${weak.summary.combinedScore}. Monumation's ${routeMood} corridor scores ${good.summary.combinedScore} — Δ ${delta} because route choice matters.`
           : "Unexpected — verify API keys and retry demo presets.",
     });
   } catch (error) {

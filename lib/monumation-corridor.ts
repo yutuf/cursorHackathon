@@ -75,6 +75,58 @@ export async function scoreCorridorFast(
   };
 }
 
+export type ComparePathRole = "mood" | "blind";
+
+/**
+ * Compare-only scoring: mood corridor vs blind functional path.
+ * Scan uses blendCorridorScores; duel uses this so jury sees a clear gap.
+ */
+export function scoreCompareCorridor(
+  result: CorridorScoreResult,
+  role: ComparePathRole,
+): number {
+  const { placesFound, placesMoodScore, photoVisionAverage } = result.summary;
+  const photoPeak = corridorPhotoMoodScore(result.pois);
+  const km = Math.max(0.4, result.distanceM / 1000);
+
+  if (role === "blind") {
+    const functional = Math.round(
+      photoPeak * 0.2 +
+        placesMoodScore * 0.2 +
+        Math.min(10, placesFound * 3),
+    );
+    return Math.max(8, Math.min(38, functional));
+  }
+
+  const breadthPts = Math.min(35, placesFound * 5);
+  const registryPts = Math.round(placesMoodScore * 0.45);
+  const photoPts = Math.round(Math.max(photoPeak, photoVisionAverage) * 0.55);
+  const destinationPts = Math.min(20, Math.round((placesFound / km) * 4));
+  const qualityBonus =
+    photoPeak >= 12 && placesFound >= 4
+      ? 12
+      : photoPeak >= 8 && placesFound >= 3
+        ? 6
+        : 0;
+
+  const raw =
+    breadthPts + registryPts + photoPts + destinationPts + qualityBonus;
+  return Math.max(42, Math.min(92, raw));
+}
+
+export function applyCompareScore(
+  result: CorridorScoreResult,
+  role: ComparePathRole,
+): CorridorScoreResult {
+  return {
+    ...result,
+    summary: {
+      ...result.summary,
+      combinedScore: scoreCompareCorridor(result, role),
+    },
+  };
+}
+
 export function blendCorridorScores(
   streetAverage: number,
   placesScore: number,
