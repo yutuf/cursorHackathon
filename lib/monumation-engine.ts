@@ -45,9 +45,12 @@ export async function checkGoEngineHealth(): Promise<{
   const base = goBaseUrl();
   if (!base) return { online: false };
 
+  const isLocal = /^https?:\/\/(localhost|127\.0\.0\.1)/i.test(base);
+  const healthTimeoutMs = isLocal ? 12_000 : 45_000;
+
   try {
     const response = await fetch(`${base}/health`, {
-      signal: AbortSignal.timeout(12_000),
+      signal: AbortSignal.timeout(healthTimeoutMs),
     });
     if (!response.ok) return { online: false };
     const body = (await response.json()) as { stack?: string };

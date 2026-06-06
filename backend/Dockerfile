@@ -1,4 +1,4 @@
-# Monumation Go engine — deploy to Koyeb / Fly / Cloud Run (no Render required)
+# Monumation Go engine — Hugging Face Spaces (free, no card) or any Docker host
 FROM golang:1.26-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./

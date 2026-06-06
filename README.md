@@ -18,7 +18,7 @@ Mood-based pedestrian routing for **Cursor Hackathon Istanbul** (June 6, 2026). 
 | Hugging Face ViT on place photos | ✅ |
 | Street View corridor samples | ✅ supplementary |
 | Corridor battle (good vs weak) | ✅ preset demos |
-| Go scoring engine | ✅ local or Render |
+| Go scoring engine | ✅ local or HF Spaces (free cloud) |
 
 ## Demo script (~2 min)
 
@@ -71,32 +71,29 @@ Navigator shows `engine live` when Go is reachable.
 |----------|-------|-------------|
 | `GOOGLE_STREET_VIEW_API_KEY` | Vercel | Directions, **Geocoding**, Places, Place Photos, Street View |
 | `HUGGINGFACE_API_KEY` | Vercel | HF inference router (ViT + DETR) |
-| `MONUMATION_GO_URL` | Vercel | Go engine URL (e.g. `https://monumation-go.onrender.com`) |
+| `MONUMATION_GO_URL` | Vercel | Go engine URL (e.g. `https://USER-monumation-go.hf.space`) |
 | `CURSOR_API_KEY` | Vercel | Optional — opportunity briefs |
 
 **Google Cloud APIs to enable:** Directions, Geocoding, Places, Street View Static.
 
 ## Deploy — Vercel (frontend) + Go in the cloud
 
-Go **must** be online for the jury — but **Render is not required** (Render often asks for a credit card even on free tier).
+Go **must** be online for the jury. **Koyeb/Render ask for payment** — use **Hugging Face Spaces** (free CPU, no credit card).
 
-### 1) Go backend — Koyeb (no credit card, recommended)
+See [`DEPLOY.md`](DEPLOY.md) for full steps.
 
-Uses [`backend/Dockerfile`](backend/Dockerfile).
+### 1) Go backend — Hugging Face Spaces (free)
 
-1. [koyeb.com](https://www.koyeb.com) → **Sign up with GitHub**
-2. **Create App** → **GitHub** → repo `yutuf/cursorHackathon`
-3. **Builder:** Dockerfile
-4. **Dockerfile path:** `backend/Dockerfile` (or set **Root directory** to `backend`)
-5. **Port:** `8000` (Koyeb sets `PORT` automatically)
-6. Deploy → copy URL, e.g. `https://monumation-go-xxx.koyeb.app`
-7. Test: `https://YOUR-URL/health` → `{"status":"ok"}`
+1. [huggingface.co/new-space](https://huggingface.co/new-space) → SDK **Docker**, hardware **CPU basic**
+2. Publish `backend/`:
 
-That URL = your `MONUMATION_GO_URL`.
+```powershell
+$env:HF_SPACE = "YOUR_USERNAME/monumation-go"
+.\scripts\publish-hf-go.ps1
+```
 
-**Other hosts (same Docker image):** Fly.io, Google Cloud Run, Railway.
-
-**Render (optional):** only if you accept adding a card — [`render.yaml`](render.yaml) or manual Web Service, root `backend`.
+3. Test: `https://YOUR_USERNAME-monumation-go.hf.space/health`
+4. That URL → Vercel env `MONUMATION_GO_URL`
 
 ### 2) Next.js on Vercel
 
@@ -112,7 +109,7 @@ Or connect [github.com/yutuf/cursorHackathon](https://github.com/yutuf/cursorHac
 ```
 GOOGLE_STREET_VIEW_API_KEY=...
 HUGGINGFACE_API_KEY=...
-MONUMATION_GO_URL=https://monumation-go-xxxx.koyeb.app
+MONUMATION_GO_URL=https://YOUR_USERNAME-monumation-go.hf.space
 ```
 
 Redeploy after adding env vars. Open `/app` and confirm **engine live**.

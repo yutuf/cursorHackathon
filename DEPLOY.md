@@ -1,87 +1,91 @@
-# Deploy troubleshooting (Vercel + Go)
+# Deploy — Vercel + Go (no credit card)
 
-## Koyeb — exact clicks
+**Koyeb and Render now ask for payment.** Use **Hugging Face Spaces** for Go (free CPU tier, no card).
 
-1. [koyeb.com](https://www.koyeb.com) → GitHub login
-2. **Create Web Service**
-3. **GitHub** → `yutuf/cursorHackathon` → branch `main`
-4. **Builder:** `Dockerfile`
-5. **Work directory:** `backend` ← **critical** (without this, build fails: `go.mod not found`)
-6. **Dockerfile:** `Dockerfile` (relative to work dir — not `backend/Dockerfile`)
-7. **Exposed ports** (Settings → Networking):
-   - Port: `8000`
-   - Protocol: HTTP
-   - Path: `/`
-   - Public: yes
-8. **Environment variables** (optional but safe):
-   - `PORT` = `8000`
-9. Deploy → wait green → copy URL: `https://YOUR-NAME.koyeb.app`
-10. Test in browser: `https://YOUR-NAME.koyeb.app/health` → `{"status":"ok"}`
-
-**One-click (pre-filled):**  
-[Deploy Go to Koyeb](https://app.koyeb.com/deploy?type=git&repository=github.com/yutuf/cursorHackathon&branch=main&builder=dockerfile&workdir=backend&dockerfile=Dockerfile&name=monumation-go&ports=8000:http&routes=%2F:8000&env=PORT=8000)
-
-If build fails, open **Logs** → look for `go build` error and paste in chat.
-
-### Koyeb buildpack (no Docker)
-
-If Docker fails, try:
-
-- **Builder:** Buildpack
-- **Root directory:** `backend`
-- **Run command:** `./monumation-api` (after build) or leave auto
-- **Port:** `8000`
+Live frontend: https://cursor-hackathon-phi.vercel.app/app
 
 ---
 
-## Vercel — exact clicks
+## 1) Go engine — Hugging Face Spaces (free)
 
-1. [vercel.com](https://vercel.com) → Import `cursorHackathon`
-2. **Root Directory:** leave empty (repo root)
-3. **Environment Variables** (Production):
+### Create the Space (once)
+
+1. [huggingface.co/new-space](https://huggingface.co/new-space)
+2. **Space name:** `monumation-go` (or any name)
+3. **SDK:** Docker
+4. **Hardware:** CPU basic (free)
+5. **Visibility:** Public
+6. Create
+
+### Publish from this repo
+
+```powershell
+$env:HF_SPACE = "YOUR_HF_USERNAME/monumation-go"
+.\scripts\publish-hf-go.ps1
+```
+
+First push uses `git clone` of the Space repo, copies `backend/`, commits, pushes. HF rebuilds automatically.
+
+### Test Go
+
+After build finishes (2–5 min):
+
+```
+https://YOUR_USERNAME-monumation-go.hf.space/health
+```
+
+→ `{"status":"ok","engine":"monumation",...}`
+
+**Cold start:** free Spaces sleep when idle. First request after sleep may take **20–40 seconds** — normal.
+
+### Manual alternative (no script)
+
+1. `git clone https://huggingface.co/spaces/YOUR_USERNAME/monumation-go`
+2. Copy everything from `backend/` into that folder (includes `README.md` + `Dockerfile`)
+3. `git add -A && git commit -m "deploy" && git push`
+
+---
+
+## 2) Vercel — connect Go
+
+Vercel → **monumation** project → Settings → Environment Variables → Production:
 
 | Key | Value |
 |-----|--------|
 | `GOOGLE_STREET_VIEW_API_KEY` | from `.env.local` |
 | `HUGGINGFACE_API_KEY` | from `.env.local` |
-| `MONUMATION_GO_URL` | Koyeb URL, no trailing slash |
+| `MONUMATION_GO_URL` | `https://YOUR_USERNAME-monumation-go.hf.space` |
 
-4. Deploy
-5. Test: `https://YOUR.vercel.app/api/monumation/engine`  
-   Should show `"goEngineOnline":true`
+No trailing slash. Then **Deployments → Redeploy**.
 
-6. App: `https://YOUR.vercel.app/app`
+### Verify
 
-**Your live Vercel URL:** https://cursor-hackathon-phi.vercel.app/app  
-**Current issue:** `MONUMATION_GO_URL` is **not set** on Vercel → Go shows offline. Compare/Scan still work via Next.js fallback, but jury needs Go in cloud.
+```
+https://cursor-hackathon-phi.vercel.app/api/monumation/engine
+```
 
-### Vercel scan timeout
+→ `"configured":true`, `"goEngineOnline":true`
 
-Free hobby plan may cap serverless at **10s**. Scan uses 20–40s.
-
-- **Compare** usually works on free tier
-- **Scan** may 504 on free — use **Compare + demo chips** for jury, or enable Vercel Pro trial for 60s functions
+App: https://cursor-hackathon-phi.vercel.app/app → **engine live**
 
 ---
 
-## Hugging Face Spaces (backup, no card)
+## Paid hosts (skip if no card)
 
-If Koyeb fails:
-
-1. [huggingface.co/new-space](https://huggingface.co/new-space)
-2. **Docker** space
-3. Connect GitHub repo OR upload `backend/` folder
-4. Dockerfile: use `backend/Dockerfile`
-5. Space URL → `MONUMATION_GO_URL`
+| Host | Issue |
+|------|--------|
+| Koyeb | Paid / trial ended |
+| Render | Credit card required |
+| Fly.io | Card often required |
 
 ---
 
-## Checklist when "both don't work"
+## Troubleshooting
 
-| Check | URL / action |
-|-------|----------------|
-| Go alive? | `MONUMATION_GO_URL/health` |
-| Vercel sees Go? | `your-app.vercel.app/api/monumation/engine` |
-| Keys set? | Vercel → Settings → Environment Variables |
-| Redeploy after env? | Deployments → Redeploy |
-| MONUMATION_GO_URL has `https://`? | No `localhost` on Vercel |
+| Symptom | Fix |
+|---------|-----|
+| HF build fails `go.mod not found` | Space repo must contain `backend/` files at **root** (use publish script) |
+| `goEngineOnline: false` | Set `MONUMATION_GO_URL` on Vercel, redeploy |
+| HF `/health` times out once | Space waking up — wait 30s, retry |
+| Scan 504 on Vercel free | Use **Compare** for jury; or Vercel Pro for 60s functions |
+| `configured: false` | `MONUMATION_GO_URL` missing on Vercel |
