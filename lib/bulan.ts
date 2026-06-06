@@ -22,8 +22,10 @@ export type DetectionResult = {
   caption?: string;
   signText?: string;
   placesName?: string;
+  placesPlaceId?: string;
   placesTypes?: string[];
   placesVerified?: boolean;
+  duplicateOf?: number;
 };
 
 export type OpportunitySummary = {
@@ -33,6 +35,7 @@ export type OpportunitySummary = {
   competitors: number;
   shops: number;
   unknown: number;
+  uniqueBusinesses: number;
   opportunityScore: number;
 };
 
@@ -44,7 +47,7 @@ export const BUSINESS_CATEGORIES: Array<{
   {
     id: "coffee_shop",
     label: "Coffee shop",
-    keywords: ["coffee", "cafe", "kahve", "espresso", "starbucks", "bakery"],
+    keywords: ["coffee", "cafe", "kahve", "espresso", "starbucks"],
   },
   {
     id: "electrician",
@@ -323,32 +326,6 @@ function matchCategoryInText(
   return extractSignHint(text, keywords);
 }
 
-function matchCategoryInLabels(
-  labelScores: LabelScore[],
-  businessCategory: BusinessCategory,
-): { label: string; score: number } | null {
-  const keywords = [
-    ...getCategoryKeywords(businessCategory),
-    ...STOREFRONT_TYPE_LABELS[businessCategory],
-  ];
-
-  for (const item of labelScores) {
-    if (item.score < MIN_VIT_LABEL_CONFIDENCE) break;
-    if (isUnreliableVitLabel(item.label)) continue;
-
-    const normalized = normalizeText(item.label);
-    const hit = keywords.find((keyword) =>
-      normalized.includes(normalizeText(keyword)),
-    );
-
-    if (hit) {
-      return { label: item.label, score: item.score };
-    }
-  }
-
-  return null;
-}
-
 function buildCombinedText(input: StorefrontClassificationInput): string {
   return [
     input.caption,
@@ -428,38 +405,16 @@ export function classifyStorefront(
     };
   }
 
-  const signMatch = signText ? matchCategoryInText(signText, businessCategory) : undefined;
-  if (signMatch) {
+  const signMatch = signText
+    ? matchCategoryInText(signText, businessCategory)
+    : undefined;
+  if (signMatch && signText && signText.length >= 4) {
     return {
       objectType: "competitor",
       businessCategory,
       confidence: 0.92,
       caption,
       signText: signMatch,
-    };
-  }
-
-  const labelMatch = matchCategoryInLabels(labelScores, businessCategory);
-  if (labelMatch) {
-    return {
-      objectType: "competitor",
-      businessCategory,
-      confidence: Math.min(0.9, 0.68 + labelMatch.score),
-      caption,
-      signText: labelMatch.label,
-    };
-  }
-
-  if (
-    signText &&
-    containsKeyword(combinedText, getCategoryKeywords(businessCategory))
-  ) {
-    return {
-      objectType: "competitor",
-      businessCategory,
-      confidence: 0.88,
-      caption,
-      signText: matchCategoryInText(combinedText, businessCategory),
     };
   }
 
@@ -492,6 +447,7 @@ export function classifyFromCaption(
 export function summarizeOpportunities(
   detections: DetectionResult[],
 ): OpportunitySummary {
+  const active = detections.filter((d) => d.duplicateOf === undefined);
   const counts = {
     vacant: 0,
     for_rent: 0,
@@ -501,7 +457,9 @@ export function summarizeOpportunities(
     unknown: 0,
   };
 
-  for (const detection of detections) {
+  const uniquePlaceKeys = new Set<string>();
+
+  for (const detection of active) {
     switch (detection.objectType) {
       case "vacant":
         counts.vacant += 1;
@@ -521,6 +479,20 @@ export function summarizeOpportunities(
       default:
         counts.unknown += 1;
     }
+
+    if (
+      (detection.objectType === "competitor" ||
+        detection.objectType === "shop") &&
+      detection.placesPlaceId
+    ) {
+      uniquePlaceKeys.add(detection.placesPlaceId);
+    } else if (
+      (detection.objectType === "competitor" ||
+        detection.objectType === "shop") &&
+      detection.placesName
+    ) {
+      uniquePlaceKeys.add(detection.placesName.toLowerCase());
+    }
   }
 
   const openings = counts.vacant + counts.for_rent + counts.for_sale;
@@ -533,6 +505,7 @@ export function summarizeOpportunities(
 
   return {
     ...counts,
+    uniqueBusinesses: uniquePlaceKeys.size,
     opportunityScore: Math.round(opportunityScore),
   };
 }

@@ -1,152 +1,135 @@
-# Bulan AI — Neighborhood Revitalization Index
+# Monumation — Mood-Based Urban Navigation
 
-**Kamu faydasına uygun** (public-benefit) urban economic mapping for the **Cursor Hackathon Istanbul** (June 6, 2026). Bulan transforms public Street View imagery into an automated neighborhood revitalization index — helping municipalities prevent small-business bankruptcies, map localized supply gaps, and activate vacant storefronts with **100% KVKK compliance**.
+**Kamu faydasına uygun** aesthetic routing for **Cursor Hackathon Istanbul** (June 6, 2026). Monumation helps tourists and pedestrians choose *which walk* matches their mood in Istanbul — heritage, scenic green, arts culture, or vibrant promenade — using Google Places, Hugging Face computer vision, and optional Street View corridor sampling.
 
-> *"Bulan AI takes public spatial images and transforms them into an automated neighborhood revitalization index, helping municipalities prevent small business bankruptcies and map localized economic supply gaps with 100% KVKK compliance."*
+> *"Google tells you what's there. Monumation scores how the corridor feels — and which path is worth your time."*
 
-### Why this serves the public interest (20 pts: Kamu Faydası)
+## Public benefit (Kamu Faydası)
 
-| Pillar | Public benefit |
-|--------|----------------|
-| **Esnaf koruması** | Steers entrepreneurs away from saturated streets, protecting life savings and preventing commercial blight |
-| **Akıllı kent planlama** | Flags neighborhoods missing critical services so municipalities can target grants and infrastructure |
-| **Atıl alanların kazanımı** | Maps Kiralık/Satılık banners to reconnect vacant storefronts with new businesses and employment |
-| **KVKK uyumlu inovasyon** | Signboards and rental banners only — no surveillance, identity profiling, or person tracking |
+| Pillar | Benefit |
+|--------|---------|
+| **Kültürel koridor yönlendirme** | Steers foot traffic toward heritage and arts corridors instead of overcrowding single landmarks |
+| **Yerel esnaf** | Promenade routing surfaces café streets and bazaars, supporting neighborhood commerce |
+| **Sürdürülebilir turizm** | Reduces random arterial walking — visitors pick mood-aligned paths with real POIs |
+| **KVKK uyumu** | Vision on places and streetscape only — no face recognition or identity profiling |
 
-This repository hosts the Next.js web app, Go backend (`backend/`), and planned Expo mobile components.
+## Live demo script (2 minutes)
 
-## Tech Stack
+1. Open the app → pick **Heritage Route**
+2. Click **Compare Heritage Route** → show Sultanahmet corridor **~70+** vs Başakşehir strip **~30**
+3. Click **Demo: Sultanahmet → Eminönü** → **Scan mood corridor**
+4. Scroll to **Worth visiting** — point at a mosque/park photo with **Hugging Face: 65+/100**
+5. Mention KVKK mask on Street View samples (supplementary layer)
+
+## Tech stack
 
 | Layer | Technology | Hosting |
 |-------|------------|---------|
-| Web | Next.js 16 (App Router, TypeScript, Tailwind CSS) | [Vercel](https://vercel.com) |
-| Backend | Go (Golang) — _to be added_ | [Render.com](https://render.com) |
-| Mobile | Expo — _to be added_ | Expo |
-| External API | Google Street View API (10,000 free requests) | Google Cloud |
+| Web | Next.js 16 (App Router, TypeScript, Tailwind) | [Vercel](https://vercel.com) |
+| Backend | Go — `masterfabric-go` (`backend/`) | [Render.com](https://render.com) |
+| AI | Hugging Face ViT + DETR via HF router | Hugging Face |
+| Maps | Google Directions, Places, Street View | Google Cloud |
 
-## Getting Started
+## How it works
 
-### Prerequisites
+```
+Mood selection → Google Directions (walking path)
+       ↓
+┌─────────────────────┬──────────────────────────┐
+│ Google Places       │ Hugging Face on Places   │
+│ (worth visiting)    │ photos (reliable CV)     │
+└─────────────────────┴──────────────────────────┘
+       ↓ optional
+Street View samples (corridor texture, KVKK-masked)
+       ↓
+Combined corridor score + corridor battle compare
+```
 
-- Node.js 18+
-- npm
+**Corridor battle** (`/api/monumation/compare`) — same mood, two paths, side-by-side scores. The demo killer for Istanbul.
 
-### Install dependencies
+## Getting started
+
+**Terminal 1 — Go Monumation Engine (masterfabric-go):**
+
+```bash
+cd backend
+go run ./cmd/monumation-api
+# listens on http://localhost:8090 — look for [Monumation Engine] logs
+```
+
+**Terminal 2 — Next.js:**
 
 ```bash
 npm install
-```
-
-### Run development server
-
-```bash
+cp .env.example .env.local   # add API keys
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to view the app.
+Or from repo root: `npm run go:monumation` (requires Go installed).
 
-### Production build
-
-```bash
-npm run build
-npm run start
-```
+Open [http://localhost:3000](http://localhost:3000). Green badge = Go engine online.
 
 ### Environment variables
 
-Copy the example file and add your API keys locally (never commit real keys):
-
-```bash
-cp .env.example .env.local
-```
-
 | Variable | Description |
 |----------|-------------|
-| `GOOGLE_STREET_VIEW_API_KEY` | Google Street View Static API key |
-| `HUGGINGFACE_API_KEY` | Hugging Face router API for storefront classification |
-| `CURSOR_API_KEY` | Cursor SDK agent for AI opportunity briefs |
-| `GITHUB_REPO_URL` | Repo URL for cloud Cursor agents on Vercel (optional) |
+| `GOOGLE_STREET_VIEW_API_KEY` | Google Maps Platform key (Directions, Places, Street View, Place Photos) |
+| `HUGGINGFACE_API_KEY` | Hugging Face inference router (ViT + DETR) |
+| `MONUMATION_GO_URL` | Go scoring engine (`http://localhost:8090` or Render URL) |
+| `CURSOR_API_KEY` | Optional — Cursor SDK briefs |
 
-## AI Tooling & Adaptation
+Enable in Google Cloud: **Directions API**, **Places API**, **Street View Static API**.
 
-This project is developed in **Cursor IDE** with an agentic ruleset defined in [`.cursorrules`](.cursorrules). The ruleset enforces:
+## AI tooling (Cursor IDE)
 
-- Next.js App Router patterns optimized for Vercel deployment
-- KVKK compliance (no identity detection; mandatory face/plate anonymization)
-- Incremental, descriptive Git commits
-- Google Street View API as the sole external imagery source
+Developed in **Cursor IDE** with agentic rules in [`.cursorrules`](.cursorrules):
 
-### How AI accelerated development
+- Monumation mood scoring matrix (`lib/monumation.ts`)
+- Places photo vision pipeline (`lib/places-vision.ts`)
+- Corridor compare presets (`lib/places-mood.ts`)
+- Go Monumation engine mirror (`backend/internal/application/urbanscan/`)
 
-| Stage | AI technique | Outcome |
-|-------|--------------|---------|
-| Project init | `create-next-app` via Cursor Agent with hackathon-aligned defaults | Next.js 16 scaffold with TypeScript, Tailwind, ESLint, and App Router in minutes |
-| Architecture guidance | `.cursorrules` agentic ruleset | Consistent stack choices (Next.js + Go + Expo) and KVKK guardrails baked into every agent session |
-| Documentation | Agent-generated README sections | Transparent AI adaptation log for jury scoring |
+| Stage | Technique | Outcome |
+|-------|-----------|---------|
+| Product pivot | Cursor Agent multi-turn | Bulan → Monumation with hybrid Places + CV |
+| Vision mapping | Iterative label→token expansion | Istanbul-friendly ViT mapping + POI proximity boost |
+| Demo presets | Corridor compare pairs | Reliable live demo without random scans |
 
-### Cursor SDK integration (extra hackathon points)
+## API routes
 
-Bulan uses the official **[Cursor SDK](https://cursor.com/docs/sdk/typescript)** (`@cursor/sdk`) to turn raw scan data into a readable **opportunity brief** for entrepreneurs.
+| Route | Purpose |
+|-------|---------|
+| `POST /api/monumation/compare` | Corridor battle — good vs weak path for selected mood |
+| `POST /api/monumation/scan` | Full corridor scan — Places + photo AI + Street View samples |
 
-| Integration | File | What it does |
-|-------------|------|--------------|
-| In-app button | `app/api/opportunity-brief/route.ts` | After a scan, calls `Agent.prompt()` to write a verdict, risks, and next steps |
-| CLI script | `scripts/generate-brief.ts` | Run `npm run brief` locally for demos or CI |
-| Shared prompt | `lib/opportunity-brief.ts` | Builds the agent prompt from corridor stats + detections |
-| SDK wrapper | `lib/cursor-agent.ts` | Local agent in dev, cloud agent on Vercel |
+## KVKK
 
-**Setup**
+- Models target **inanimate urban features** only (facades, signage, landmarks)
+- Images pass KVKK pipeline gate before Hugging Face inference
+- UI shows anonymized preview (blur badge) on all photos
+- No face recognition, plate reading, or person profiling
+- Post-event deletion commitment: [KVKK_DATA_DELETION.md](KVKK_DATA_DELETION.md)
 
-1. Create an API key at [Cursor Dashboard → Integrations](https://cursor.com/dashboard/integrations)
-2. Add to `.env.local`:
-   ```bash
-   CURSOR_API_KEY=cursor_...
-   ```
-3. Scan a corridor in the app, then click **Generate AI brief (Cursor SDK)**
+## Go backend (masterfabric-go)
 
-**CLI demo (good for jury presentation)**
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /health` | Engine status |
+| `POST /monumation/normalize` | Score HF labels → mood vector |
+| `POST /monumation/scan` | Batch corridor scoring + KVKK mask count |
 
-```bash
-npm run brief
-# or with exported scan JSON:
-npm run brief -- ./my-scan.json
-```
+Next.js calls Go when `MONUMATION_GO_URL` is reachable; falls back to TypeScript scoring otherwise.
 
-**Prompt technique:** We use the one-shot `Agent.prompt()` pattern — scan results are serialized into a structured prompt with opportunity counts, competitor detections, and sign text. The agent returns a markdown brief with `## Verdict`, `## Best opportunities`, `## Competition risk`, and `## Next steps`. No manual report writing.
-
-**Runtime:** Local `npm run dev` uses a **local Cursor agent** (fast). Production on Vercel falls back to a **cloud agent** or template if the key is missing.
-
-## Planned Integrations
-
-- **Go backend** — Urban object detection API (signboards, road damage, public infrastructure)
-- **Expo mobile** — Cross-platform field data collection
-- **Google Street View API** — Street-level imagery ingestion (quota-aware)
-- **KVKK pipeline** — Irreversible face and license plate anonymization before any model processing
-
-## KVKK & Data Privacy
-
-- Models are used **only** for urban object detection — identity profiling is prohibited
-- Human faces and vehicle plates must be anonymized **before** processing
-- Raw unencrypted data must not be uploaded to public repositories
-- All API keys must be stored in `.env.local` (gitignored)
-
-## Deploy on Vercel
-
-**Live production:** https://cursor-hackathon-phi.vercel.app
-
-Redeploy after changes:
+## Deploy
 
 ```bash
+npm run build
 npx vercel deploy --prod --yes
 ```
 
-Required Vercel environment variables: `GOOGLE_STREET_VIEW_API_KEY`, `HUGGINGFACE_API_KEY`  
-Optional for AI briefs: `CURSOR_API_KEY`, `GITHUB_REPO_URL`
+Required: `GOOGLE_STREET_VIEW_API_KEY`, `HUGGINGFACE_API_KEY`
 
-See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-application/deploying) for details.
+## Learn more
 
-## Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
 - [Hackathon announcement](announcement.txt)
 - [Hackathon rules](RULES.txt)

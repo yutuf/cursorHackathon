@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { useCallback, useState } from "react";
-import type { ScanResult } from "@/app/api/streetview/scan/route";
+import type { VerifiedPlaceResult } from "@/app/api/streetview/verify/route";
 import {
   BUSINESS_CATEGORIES,
   OPPORTUNITY_STYLES,
@@ -11,6 +11,7 @@ import {
 } from "@/lib/bulan";
 import type { AreaBounds } from "@/lib/area";
 import { boundsCenter } from "@/lib/area";
+import type { DiscoveredPlace } from "@/lib/places-discovery";
 import {
   KVKK_BADGES,
   MISSION_TAGLINE,
@@ -18,7 +19,7 @@ import {
   PUBLIC_BENEFIT_PILLARS,
 } from "@/lib/public-mission";
 import { ISTANBUL_PRESETS } from "@/lib/streetview";
-import type { LatLng, RouteScanWarning, RouteWaypoint } from "@/lib/route";
+import type { RouteScanWarning } from "@/lib/route";
 
 const RouteMap = dynamic(() => import("@/app/components/RouteMap"), {
   ssr: false,
@@ -29,30 +30,16 @@ const RouteMap = dynamic(() => import("@/app/components/RouteMap"), {
   ),
 });
 
-type AreaResponse = {
+type DiscoverResponse = {
   bounds: AreaBounds;
   widthM: number;
   heightM: number;
   areaM2: number;
-  coordinates: LatLng[];
-  waypoints: RouteWaypoint[];
-  sampleIntervalM: number;
-  estimatedApiCalls: number;
+  places: DiscoveredPlace[];
+  opportunities: OpportunitySummary;
   scanWarning: RouteScanWarning | null;
-  geometrySource?: string;
-  distanceM?: number;
-};
-
-type ScanResponse = {
-  results: ScanResult[];
-  businessCategory: BusinessCategory;
-  summary: {
-    total: number;
-    available: number;
-    unavailable: number;
-    apiCallsUsed: number;
-    opportunities: OpportunitySummary;
-  };
+  geometrySource: string;
+  estimatedApiCalls: number;
 };
 
 const MAP_CENTER = ISTANBUL_PRESETS[0];
@@ -62,114 +49,112 @@ export default function BulanScanner() {
     useState<BusinessCategory>("coffee_shop");
   const [areaBounds, setAreaBounds] = useState<AreaBounds | null>(null);
   const [previewBounds, setPreviewBounds] = useState<AreaBounds | null>(null);
-  const [areaPlan, setAreaPlan] = useState<AreaResponse | null>(null);
-  const [scanResults, setScanResults] = useState<ScanResult[]>([]);
-  const [opportunities, setOpportunities] = useState<OpportunitySummary | null>(
-    null,
-  );
-  const [routeLoading, setRouteLoading] = useState(false);
-  const [scanLoading, setScanLoading] = useState(false);
+  const [discovery, setDiscovery] = useState<DiscoverResponse | null>(null);
+  const [verifiedPhotos, setVerifiedPhotos] = useState<VerifiedPlaceResult[]>([]);
+  const [discoverLoading, setDiscoverLoading] = useState(false);
+  const [photoLoading, setPhotoLoading] = useState(false);
   const [briefLoading, setBriefLoading] = useState(false);
   const [brief, setBrief] = useState<string | null>(null);
   const [briefSource, setBriefSource] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const loadArea = useCallback(async (bounds: AreaBounds) => {
-    setRouteLoading(true);
-    setError(null);
+  const runDiscovery = useCallback(
+    async (bounds: AreaBounds, category: BusinessCategory) => {
+      setDiscoverLoading(true);
+      setError(null);
 
-    try {
-      const response = await fetch("/api/route", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ bounds }),
-      });
+      try {
+        const response = await fetch("/api/discover", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ bounds, businessCategory: category }),
+        });
 
-      const body = await response.json();
+        const body = await response.json();
 
-      if (!response.ok) {
-        throw new Error(body.error ?? "Failed to plan area scan");
+        if (!response.ok) {
+          throw new Error(body.error ?? "Failed to discover businesses");
+        }
+
+        setDiscovery(body as DiscoverResponse);
+        setVerifiedPhotos([]);
+        setBrief(null);
+        setBriefSource(null);
+      } catch (discoverError) {
+        setDiscovery(null);
+        setError(
+          discoverError instanceof Error
+            ? discoverError.message
+            : "Failed to discover businesses",
+        );
+      } finally {
+        setDiscoverLoading(false);
       }
-
-      setAreaPlan(body as AreaResponse);
-      setScanResults([]);
-      setOpportunities(null);
-      setBrief(null);
-      setBriefSource(null);
-    } catch (areaError) {
-      setAreaPlan(null);
-      setError(
-        areaError instanceof Error
-          ? areaError.message
-          : "Failed to plan area scan",
-      );
-    } finally {
-      setRouteLoading(false);
-    }
-  }, []);
+    },
+    [],
+  );
 
   function handleBoundsDrawn(bounds: AreaBounds) {
     setError(null);
     setAreaBounds(bounds);
-    void loadArea(bounds);
+    void runDiscovery(bounds, businessCategory);
+  }
+
+  function handleCategoryChange(category: BusinessCategory) {
+    setBusinessCategory(category);
+    if (areaBounds) {
+      void runDiscovery(areaBounds, category);
+    }
   }
 
   function handleClear() {
     setAreaBounds(null);
     setPreviewBounds(null);
-    setAreaPlan(null);
-    setScanResults([]);
-    setOpportunities(null);
+    setDiscovery(null);
+    setVerifiedPhotos([]);
     setBrief(null);
     setBriefSource(null);
     setError(null);
   }
 
-  async function handleScan() {
-    if (!areaPlan?.waypoints.length) return;
+  async function handleLoadPhotos() {
+    if (!discovery?.places.length) return;
 
-    if (areaPlan.scanWarning) {
-      const proceed = window.confirm(
-        `${areaPlan.scanWarning.title}\n\n${areaPlan.scanWarning.message}\n\n${areaPlan.scanWarning.suggestion}\n\nScan this area anyway?`,
-      );
-      if (!proceed) return;
-    }
-
-    setScanLoading(true);
+    setPhotoLoading(true);
     setError(null);
-    setBrief(null);
-    setBriefSource(null);
 
     try {
-      const response = await fetch("/api/streetview/scan", {
+      const response = await fetch("/api/streetview/verify", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          waypoints: areaPlan.waypoints,
-          includeImages: true,
+          places: discovery.places,
+          bounds: discovery.bounds,
           businessCategory,
+          maxPhotos: 6,
         }),
       });
 
-      const body = (await response.json()) as ScanResponse & { error?: string };
+      const body = await response.json();
 
       if (!response.ok) {
-        throw new Error(body.error ?? "Area scan failed");
+        throw new Error(body.error ?? "Street View verify failed");
       }
 
-      setScanResults(body.results);
-      setOpportunities(body.summary.opportunities);
-    } catch (scanError) {
+      setVerifiedPhotos(body.results as VerifiedPlaceResult[]);
+    } catch (photoError) {
       setError(
-        scanError instanceof Error ? scanError.message : "Area scan failed",
+        photoError instanceof Error
+          ? photoError.message
+          : "Street View verify failed",
       );
     } finally {
-      setScanLoading(false);
+      setPhotoLoading(false);
     }
   }
 
   async function handleGenerateBrief() {
-    if (!opportunities || !scanResults.length) return;
+    if (!discovery?.places.length) return;
 
     setBriefLoading(true);
     setError(null);
@@ -181,17 +166,17 @@ export default function BulanScanner() {
         body: JSON.stringify({
           businessCategory,
           corridor: {
-            distanceM: areaPlan?.areaM2,
-            samplePoints: areaPlan?.waypoints.length,
+            distanceM: discovery.areaM2,
+            samplePoints: discovery.places.length,
           },
-          opportunities,
-          detections: scanResults.map((result) => ({
-            distanceM: result.distanceM,
-            side: result.side,
-            objectType: result.detection?.objectType ?? "unknown",
-            confidence: result.detection?.confidence ?? 0,
-            signText: result.detection?.signText,
-            caption: result.detection?.caption,
+          opportunities: discovery.opportunities,
+          detections: discovery.places.map((place, index) => ({
+            distanceM: index * 50,
+            side: "registry",
+            objectType: place.objectType,
+            confidence: 0.97,
+            signText: place.name,
+            caption: place.category ?? "unmapped",
           })),
         }),
       });
@@ -262,9 +247,10 @@ export default function BulanScanner() {
         </blockquote>
         <p className="max-w-3xl text-sm text-zinc-500">{MISSION_TAGLINE_TR}</p>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>Demo tip:</strong> draw a rectangle over shop-lined blocks (not
-          highways). Roads follow Google Directions; AI labels are verified with
-          Google Places. Faces and plates are blurred before processing (KVKK).
+          <strong>How it works:</strong> draw a box → Google Places finds real
+          shop locations first → map pins match registered businesses. Street View
+          is optional (photos only when you click load). No more guessing from
+          road waypoints.
         </div>
       </header>
 
@@ -296,7 +282,7 @@ export default function BulanScanner() {
             <select
               value={businessCategory}
               onChange={(event) =>
-                setBusinessCategory(event.target.value as BusinessCategory)
+                handleCategoryChange(event.target.value as BusinessCategory)
               }
               className="w-full rounded-xl border border-zinc-200 px-3 py-2.5 text-sm"
             >
@@ -311,71 +297,52 @@ export default function BulanScanner() {
           <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-3 text-sm text-zinc-700">
             <p className="font-medium text-zinc-900">Select neighborhood block</p>
             <p className="mt-1">
-              Drag a rectangle over a mahalle block. Bulan builds a
-              revitalization index from vacancy rates and supply gaps.
+              Drag a rectangle. Bulan queries Google Places for every registered
+              business inside — competitors and supply gaps from real addresses.
             </p>
           </div>
 
-          {areaPlan?.scanWarning && (
+          {discovery?.scanWarning && (
             <div
               role="alert"
               className="rounded-xl border border-orange-300 bg-orange-50 p-3 text-sm text-orange-950"
             >
-              <p className="font-semibold">{areaPlan.scanWarning.title}</p>
-              <p className="mt-1">{areaPlan.scanWarning.message}</p>
+              <p className="font-semibold">{discovery.scanWarning.title}</p>
+              <p className="mt-1">{discovery.scanWarning.message}</p>
               <p className="mt-2 text-orange-800">
-                {areaPlan.scanWarning.suggestion}
+                {discovery.scanWarning.suggestion}
               </p>
             </div>
           )}
 
-          {areaPlan && (
+          {discovery && (
             <dl className="space-y-2 rounded-xl border border-amber-100 bg-amber-50 p-3 text-sm">
               <div className="flex justify-between gap-4">
                 <dt className="text-amber-900">Area size</dt>
                 <dd className="font-medium text-amber-950">
-                  {areaPlan.widthM}×{areaPlan.heightM} m
+                  {discovery.widthM}×{discovery.heightM} m
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-amber-900">Coverage</dt>
+                <dt className="text-amber-900">Businesses found</dt>
                 <dd className="font-medium text-amber-950">
-                  {(areaPlan.areaM2 / 10_000).toFixed(2)} ha
+                  {discovery.places.length}
                 </dd>
               </div>
               <div className="flex justify-between gap-4">
-                <dt className="text-amber-900">Sample points</dt>
-                <dd className="font-medium text-amber-950">
-                  {areaPlan.waypoints.length}
-                </dd>
+                <dt className="text-amber-900">Data source</dt>
+                <dd className="font-medium text-amber-950">Google Places</dd>
               </div>
-              {areaPlan.geometrySource === "google_directions" && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-amber-900">Road geometry</dt>
-                  <dd className="font-medium text-amber-950">Google Directions</dd>
-                </div>
-              )}
-              {typeof areaPlan.distanceM === "number" && areaPlan.distanceM > 0 && (
-                <div className="flex justify-between gap-4">
-                  <dt className="text-amber-900">Road coverage</dt>
-                  <dd className="font-medium text-amber-950">
-                    {(areaPlan.distanceM / 1000).toFixed(2)} km
-                  </dd>
-                </div>
-              )}
             </dl>
           )}
 
-          {opportunities && (
+          {discovery?.opportunities && (
             <dl className="grid grid-cols-2 gap-2 text-xs">
               {(
                 [
-                  ["vacant", opportunities.vacant],
-                  ["for_rent", opportunities.for_rent],
-                  ["for_sale", opportunities.for_sale],
-                  ["competitor", opportunities.competitors],
-                  ["shop", opportunities.shops],
-                  ["unknown", opportunities.unknown],
+                  ["competitor", discovery.opportunities.competitors],
+                  ["shop", discovery.opportunities.shops],
+                  ["unknown", discovery.opportunities.unknown],
                 ] as const
               ).map(([type, count]) => (
                 <div
@@ -393,17 +360,18 @@ export default function BulanScanner() {
             </dl>
           )}
 
-          {opportunities && (
+          {discovery?.opportunities && (
             <div className="rounded-xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white p-4">
               <p className="text-xs uppercase tracking-wide text-amber-700">
                 Revitalization index
               </p>
               <p className="text-3xl font-bold text-amber-950">
-                {opportunities.opportunityScore}
+                {discovery.opportunities.opportunityScore}
                 <span className="text-base font-medium text-amber-700">/100</span>
               </p>
               <p className="mt-1 text-xs text-amber-800">
-                Higher = more vacancies &amp; gaps, lower sector saturation
+                Based on Google Places registry — lower competitor count = higher
+                score
               </p>
             </div>
           )}
@@ -411,24 +379,28 @@ export default function BulanScanner() {
           <div className="grid gap-2">
             <button
               type="button"
-              onClick={handleScan}
-              disabled={!areaPlan?.waypoints.length || scanLoading || routeLoading}
-              className="w-full rounded-xl bg-amber-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-amber-700 disabled:cursor-not-allowed disabled:opacity-60"
+              onClick={handleLoadPhotos}
+              disabled={
+                !discovery?.places.length || photoLoading || discoverLoading
+              }
+              className="w-full rounded-xl border border-indigo-300 bg-indigo-50 px-4 py-3 text-sm font-semibold text-indigo-900 transition hover:bg-indigo-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {scanLoading ? "Mapping street economy..." : "Scan neighborhood"}
+              {photoLoading
+                ? "Loading Street View photos..."
+                : "Load Street View photos (optional)"}
             </button>
-            {opportunities && (
+            {discovery?.places.length ? (
               <button
                 type="button"
                 onClick={handleGenerateBrief}
-                disabled={briefLoading || scanLoading}
+                disabled={briefLoading || photoLoading}
                 className="w-full rounded-xl border border-violet-300 bg-violet-50 px-4 py-3 text-sm font-semibold text-violet-900 transition hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {briefLoading
                   ? "Writing municipal brief..."
                   : "Generate revitalization brief (Cursor SDK)"}
               </button>
-            )}
+            ) : null}
             <button
               type="button"
               onClick={handleClear}
@@ -447,7 +419,7 @@ export default function BulanScanner() {
               }
               bounds={areaBounds}
               previewBounds={previewBounds}
-              scanResults={scanResults}
+              discoveredPlaces={discovery?.places ?? []}
               onBoundsDrawn={handleBoundsDrawn}
               onBoundsPreview={setPreviewBounds}
             />
@@ -502,74 +474,65 @@ export default function BulanScanner() {
         </section>
       )}
 
-      {scanResults.length > 0 && (
+      {discovery && discovery.places.length > 0 && (
         <section className="space-y-4">
           <h2 className="text-lg font-semibold text-zinc-900">
-            Street-level economic map
+            Registered businesses in area
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-            {scanResults.map((result) => {
-              const type = result.detection?.objectType ?? "unknown";
-              const style = OPPORTUNITY_STYLES[type];
+            {discovery.places.map((place) => {
+              const style = OPPORTUNITY_STYLES[place.objectType];
+              const photo = verifiedPhotos.find(
+                (item) => item.placeId === place.placeId,
+              );
 
               return (
                 <article
-                  key={`${result.index}-${result.lat}-${result.lng}`}
+                  key={place.placeId}
                   className="overflow-hidden rounded-2xl border bg-white shadow-sm"
                   style={{ borderColor: style.border }}
                 >
-                  {result.imageBase64 ? (
+                  {photo?.imageBase64 ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={result.imageBase64}
-                      alt={`Storefront at ${result.distanceM}m`}
+                      src={photo.imageBase64}
+                      alt={place.name}
                       className="h-44 w-full object-cover"
                     />
                   ) : (
-                    <div className="flex h-44 items-center justify-center bg-zinc-100 px-4 text-center text-sm text-zinc-500">
-                      No imagery ({result.status})
+                    <div className="flex h-44 flex-col items-center justify-center bg-zinc-100 px-4 text-center text-sm text-zinc-500">
+                      <span className="font-medium text-zinc-700">
+                        {place.name}
+                      </span>
+                      <span className="mt-1 text-xs">
+                        {photo
+                          ? `No imagery (${photo.status})`
+                          : "Places registry — click load photos for Street View"}
+                      </span>
                     </div>
                   )}
                   <div className="space-y-2 p-3 text-xs text-zinc-600">
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <span
-                        className="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
-                        style={{
-                          backgroundColor: style.bg,
-                          color: style.color,
-                        }}
-                      >
-                        {style.label}
-                        {result.detection
-                          ? ` · ${Math.round(result.detection.confidence * 100)}%`
-                          : ""}
-                      </span>
-                      {result.detection?.placesVerified && (
-                        <span className="inline-flex rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">
-                          Google verified
-                        </span>
-                      )}
-                    </div>
-                    <p className="font-medium text-zinc-900">
-                      {result.distanceM}m · {result.side} side · heading{" "}
-                      {Math.round(result.heading)}°
+                    <span
+                      className="inline-flex rounded-full px-2 py-1 text-[11px] font-semibold uppercase tracking-wide"
+                      style={{
+                        backgroundColor: style.bg,
+                        color: style.color,
+                      }}
+                    >
+                      {style.label}
+                    </span>
+                    <p className="font-medium text-zinc-900">{place.name}</p>
+                    {place.category && (
+                      <p className="text-zinc-700">
+                        Category: {place.category.replace("_", " ")}
+                      </p>
+                    )}
+                    {place.vicinity && (
+                      <p className="text-zinc-500">{place.vicinity}</p>
+                    )}
+                    <p className="text-zinc-400">
+                      {place.lat.toFixed(5)}, {place.lng.toFixed(5)}
                     </p>
-                    {result.detection?.placesName && (
-                      <p className="font-medium text-emerald-800">
-                        {result.detection.placesName}
-                      </p>
-                    )}
-                    {result.detection?.signText &&
-                      result.detection.signText !== result.detection.placesName && (
-                        <p className="font-medium text-zinc-800">
-                          Sign: {result.detection.signText}
-                        </p>
-                      )}
-                    {result.detection?.caption && (
-                      <p className="line-clamp-3 text-zinc-500">
-                        {result.detection.caption}
-                      </p>
-                    )}
                   </div>
                 </article>
               );

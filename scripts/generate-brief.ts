@@ -26,6 +26,7 @@ const DEMO_PAYLOAD: BriefRequest = {
     competitors: 3,
     shops: 4,
     unknown: 2,
+    uniqueBusinesses: 2,
     opportunityScore: 58,
   },
   detections: [

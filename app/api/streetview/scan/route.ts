@@ -12,6 +12,7 @@ import {
   type QuickStorefrontAnalysis,
 } from "@/lib/huggingface";
 import type { StorefrontSide } from "@/lib/route";
+import { markDuplicateScanResults } from "@/lib/scan-dedup";
 import { verifyDetectionWithPlaces } from "@/lib/places-verify";
 import {
   buildStreetViewUrl,
@@ -54,7 +55,7 @@ export type ScanResult = {
   detection: DetectionResult | null;
 };
 
-const MAX_WAYPOINTS = 15;
+const MAX_WAYPOINTS = 12;
 const VALID_CATEGORIES: BusinessCategory[] = [
   "coffee_shop",
   "electrician",
@@ -256,8 +257,8 @@ export async function POST(request: NextRequest) {
             const verifyLng = metadata?.location?.lng ?? captureLng;
             detection = await verifyDetectionWithPlaces(
               detection,
-              verifyLat,
-              verifyLng,
+              { lat: verifyLat, lng: verifyLng },
+              heading,
               businessCategory,
             );
           } else if (!hasHfKey) {
@@ -304,14 +305,15 @@ export async function POST(request: NextRequest) {
     });
   }
 
-  const available = results.filter((result) => result.status === "OK").length;
-  const detections = results
+  const dedupedResults = markDuplicateScanResults(results);
+  const available = dedupedResults.filter((result) => result.status === "OK").length;
+  const detections = dedupedResults
     .map((result) => result.detection)
     .filter((value): value is DetectionResult => value !== null);
   const opportunities = summarizeOpportunities(detections);
 
   return NextResponse.json({
-    results,
+    results: dedupedResults,
     businessCategory,
     summary: {
       total: results.length,
@@ -320,7 +322,7 @@ export async function POST(request: NextRequest) {
       apiCallsUsed: streetViewCalls + available,
       opportunities,
       aiEnabled: hasHfKey,
-      captureMode: "storefront_dual_side_hf_router",
+      captureMode: "places_in_view_verified",
     },
   });
 }

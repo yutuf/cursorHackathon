@@ -15,6 +15,7 @@ import type { ScanResult } from "@/app/api/streetview/scan/route";
 import { OPPORTUNITY_STYLES } from "@/lib/bulan";
 import type { AreaBounds } from "@/lib/area";
 import { normalizeBounds } from "@/lib/area";
+import type { DiscoveredPlace } from "@/lib/places-discovery";
 import type { LatLng } from "@/lib/route";
 import "leaflet/dist/leaflet.css";
 
@@ -22,6 +23,7 @@ type RouteMapProps = {
   center: LatLng;
   bounds: AreaBounds | null;
   previewBounds: AreaBounds | null;
+  discoveredPlaces?: DiscoveredPlace[];
   scanResults?: ScanResult[];
   onBoundsDrawn: (bounds: AreaBounds) => void;
   onBoundsPreview?: (bounds: AreaBounds | null) => void;
@@ -109,6 +111,7 @@ export default function RouteMap({
   center,
   bounds,
   previewBounds,
+  discoveredPlaces = [],
   scanResults = [],
   onBoundsDrawn,
   onBoundsPreview,
@@ -145,33 +148,45 @@ export default function RouteMap({
         />
       )}
 
-      {scanResults
-        .filter((result) => result.status === "OK" && result.detection)
-        .map((result) => {
-          const type = result.detection!.objectType;
-          const style = OPPORTUNITY_STYLES[type];
+      {discoveredPlaces.map((place) => {
+        const type = place.objectType;
+        const style = OPPORTUNITY_STYLES[type];
 
-          return (
-            <CircleMarker
-              key={`scan-${result.index}`}
-              center={[result.lat, result.lng]}
-              radius={7}
-              pathOptions={{
-                color: "#ffffff",
-                weight: 2,
-                fillColor: style.color,
-                fillOpacity: 0.95,
-              }}
-            >
-              <Tooltip direction="top" offset={[0, -6]}>
-                {style.label}
-                {result.detection?.caption
-                  ? ` — ${result.detection.caption.slice(0, 48)}`
-                  : ""}
-              </Tooltip>
-            </CircleMarker>
-          );
-        })}
+        return (
+          <CircleMarker
+            key={`place-${place.placeId}`}
+            center={[place.lat, place.lng]}
+            radius={8}
+            pathOptions={{
+              color: "#ffffff",
+              weight: 2,
+              fillColor: style.color,
+              fillOpacity: 0.95,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -6]}>
+              {place.name}
+              {place.category ? ` · ${place.category.replace("_", " ")}` : ""}
+            </Tooltip>
+          </CircleMarker>
+        );
+      })}
+
+      {scanResults
+        .filter((result) => result.imageBase64)
+        .map((result) => (
+          <CircleMarker
+            key={`sv-${result.index}`}
+            center={[result.lat, result.lng]}
+            radius={5}
+            pathOptions={{
+              color: "#6366f1",
+              weight: 2,
+              fillColor: "#818cf8",
+              fillOpacity: 0.9,
+            }}
+          />
+        ))}
     </MapContainer>
   );
 }

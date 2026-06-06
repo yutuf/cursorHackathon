@@ -73,9 +73,9 @@ export async function POST(request: NextRequest) {
 
   const sampleIntervalM = Math.min(
     500,
-    Math.max(20, Number(body.sampleIntervalM ?? 20)),
+    Math.max(30, Number(body.sampleIntervalM ?? 45)),
   );
-  const maxPoints = Math.min(15, Math.max(2, Number(body.maxPoints ?? 15)));
+  const maxPoints = Math.min(12, Math.max(2, Number(body.maxPoints ?? 12)));
 
   try {
     if (body.start && body.end) {
