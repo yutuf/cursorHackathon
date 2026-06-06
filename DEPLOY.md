@@ -6,16 +6,20 @@
 2. **Create Web Service**
 3. **GitHub** → `yutuf/cursorHackathon` → branch `main`
 4. **Builder:** `Dockerfile`
-5. **Dockerfile location:** `backend/Dockerfile`
-6. **Exposed ports** (Settings → Networking):
+5. **Work directory:** `backend` ← **critical** (without this, build fails: `go.mod not found`)
+6. **Dockerfile:** `Dockerfile` (relative to work dir — not `backend/Dockerfile`)
+7. **Exposed ports** (Settings → Networking):
    - Port: `8000`
    - Protocol: HTTP
    - Path: `/`
    - Public: yes
-7. **Environment variables** (optional but safe):
+8. **Environment variables** (optional but safe):
    - `PORT` = `8000`
-8. Deploy → wait green → copy URL: `https://YOUR-NAME.koyeb.app`
-9. Test in browser: `https://YOUR-NAME.koyeb.app/health`
+9. Deploy → wait green → copy URL: `https://YOUR-NAME.koyeb.app`
+10. Test in browser: `https://YOUR-NAME.koyeb.app/health` → `{"status":"ok"}`
+
+**One-click (pre-filled):**  
+[Deploy Go to Koyeb](https://app.koyeb.com/deploy?type=git&repository=github.com/yutuf/cursorHackathon&branch=main&builder=dockerfile&workdir=backend&dockerfile=Dockerfile&name=monumation-go&ports=8000:http&routes=%2F:8000&env=PORT=8000)
 
 If build fails, open **Logs** → look for `go build` error and paste in chat.
 
@@ -47,6 +51,9 @@ If Docker fails, try:
    Should show `"goEngineOnline":true`
 
 6. App: `https://YOUR.vercel.app/app`
+
+**Your live Vercel URL:** https://cursor-hackathon-phi.vercel.app/app  
+**Current issue:** `MONUMATION_GO_URL` is **not set** on Vercel → Go shows offline. Compare/Scan still work via Next.js fallback, but jury needs Go in cloud.
 
 ### Vercel scan timeout
 

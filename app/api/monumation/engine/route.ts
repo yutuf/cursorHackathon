@@ -3,10 +3,12 @@ import { checkGoEngineHealth } from "@/lib/monumation-engine";
 
 export async function GET() {
   const health = await checkGoEngineHealth();
+  const configuredUrl = process.env.MONUMATION_GO_URL?.trim().replace(/\/$/, "");
   return NextResponse.json({
     engine: "monumation",
     goEngineOnline: health.online,
     stack: health.stack ?? null,
-    url: process.env.MONUMATION_GO_URL ?? "http://localhost:8090",
+    configured: Boolean(configuredUrl),
+    url: configuredUrl ?? (process.env.VERCEL ? null : "http://localhost:8090"),
   });
 }
