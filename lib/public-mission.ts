@@ -1,43 +1,51 @@
 export const MISSION_TAGLINE =
-  "Bulan AI transforms public spatial imagery into an automated neighborhood revitalization index — helping municipalities prevent small-business bankruptcies and map localized economic supply gaps with KVKK-compliant, surveillance-free technology.";
+  "Monumation routes Istanbul pedestrians by mood — heritage, green scenic, arts, and promenade corridors — using Google Places and Hugging Face vision with KVKK-compliant, surveillance-free processing.";
 
 export const MISSION_TAGLINE_TR =
-  "Kamusal mekân görüntülerini otomatik bir mahalle canlandırma endeksine dönüştürür; belediyelerin esnaf iflaslarını önlemesine ve yerel ekonomik arz boşluklarını %100 KVKK uyumlu şekilde haritalamasına yardımcı olur.";
+  "Monumation, İstanbul'da yürüyüşü ruh haline göre yönlendirir: tarihi koridor, yeşil manzara, sanat ve canlı yaşam — Google Places ve Hugging Face ile, KVKK uyumlu ve gözetimsiz.";
 
 export const PUBLIC_BENEFIT_PILLARS = [
   {
-    id: "esnaf",
-    title: "Local economy stability",
-    titleTr: "Esnaf koruması",
+    id: "culture",
+    title: "Cultural corridor routing",
+    titleTr: "Kültürel koridor yönlendirme",
     description:
-      "Steers entrepreneurs away from saturated dead zones, protecting life savings and preventing commercial blight from identical shops crowding one street.",
+      "Steers foot traffic toward heritage and arts paths instead of overcrowding single landmarks or random arterials.",
   },
   {
-    id: "municipal",
-    title: "Smart city planning",
-    titleTr: "Akıllı kent planlama",
+    id: "local",
+    title: "Local commerce",
+    titleTr: "Yerel esnaf",
     description:
-      "Flags neighborhoods missing critical services (electrician, grocery, pharmacy) so planners can target grants, tax breaks, and infrastructure investment.",
+      "Promenade mood surfaces café streets, bazaars, and pedestrian life — bringing visitors to neighborhood businesses.",
   },
   {
-    id: "vacancy",
-    title: "Activating idle space",
-    titleTr: "Atıl alanların kazanımı",
+    id: "sustainable",
+    title: "Sustainable tourism",
+    titleTr: "Sürdürülebilir turizm",
     description:
-      "Maps unlisted Kiralık and Satılık banners to reconnect vacant storefronts with new businesses, revenue, and street-level safety.",
+      "Corridor battle scoring shows why some walks feel right and others don't — reducing aimless asphalt wandering.",
   },
   {
     id: "kvkk",
     title: "Privacy by design",
     titleTr: "KVKK uyumlu inovasyon",
     description:
-      "Detects inanimate urban objects only — signboards and rental banners. No identity profiling; faces and plates are blurred before any AI processing.",
+      "Vision on places and streetscape only. Faces and plates anonymized before AI. No identity profiling.",
   },
 ] as const;
 
 export const KVKK_BADGES = [
-  "Signboards only",
+  "Landmarks only",
   "No person tracking",
   "Face & plate blur",
-  "Raw data not stored",
+  "Data deleted post-event",
+] as const;
+
+export const DEMO_STEPS = [
+  "Pick Heritage mood → click Compare Heritage Route",
+  "Show good corridor score vs weak stretch",
+  "Demo: Sultanahmet → Eminönü → Scan mood corridor",
+  "Point at Places photo with Hugging Face score",
+  "Mention Monumation Engine (Go) + KVKK mask on Street View",
 ] as const;

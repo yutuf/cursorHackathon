@@ -13,9 +13,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Bulan AI — Neighborhood Revitalization Index",
+  title: "Monumation — Mood-Based Urban Navigation",
   description:
-    "KVKK-compliant urban economic mapping for municipalities and entrepreneurs. Vacancy tracking, supply-gap analysis, and smart-city planning from public Street View imagery.",
+    "Mood-based pedestrian routing for Istanbul — Google Places, Hugging Face vision on landmark photos, Monumation Engine (Go), KVKK-compliant.",
 };
 
 export default function RootLayout({
