@@ -1,4 +1,4 @@
-# Cursor Hackathon Istanbul — Urban Solution Platform
+# cursorHackathon — Urban Solution Platform
 
 AI-driven urban analysis project for the **Cursor Hackathon Istanbul** (June 6, 2026). This repository hosts the web frontend and will integrate with Go backend and Expo mobile components as the hackathon progresses.
 
@@ -49,7 +49,7 @@ cp .env.example .env.local
 
 | Variable | Description |
 |----------|-------------|
-| `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps / Street View API key |
+| `GOOGLE_STREET_VIEW_API_KEY` | Google Street View Static API key |
 
 ## AI Tooling & Adaptation
 
@@ -102,3 +102,4 @@ See [Next.js deployment docs](https://nextjs.org/docs/app/building-your-applicat
 
 - [Next.js Documentation](https://nextjs.org/docs)
 - [Hackathon announcement](announcement.txt)
+- [Hackathon rules](RULES.txt)
