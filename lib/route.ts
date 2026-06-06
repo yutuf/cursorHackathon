@@ -26,8 +26,8 @@ export type DrivingRoute = {
 
 const EARTH_RADIUS_M = 6_371_000;
 const DEFAULT_SAMPLE_INTERVAL_M = 50;
-const DEFAULT_MAX_POINTS = 20;
-const STOREFRONT_OFFSET_M = 12;
+const DEFAULT_MAX_POINTS = 15;
+const STOREFRONT_OFFSET_M = 0;
 
 export function haversineDistance(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180;

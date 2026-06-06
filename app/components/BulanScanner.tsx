@@ -175,10 +175,9 @@ export default function BulanScanner() {
           down the road.
         </p>
         <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-          <strong>AI detection:</strong> add{" "}
-          <code className="rounded bg-white px-1">HUGGINGFACE_API_KEY</code> to{" "}
-          <code className="rounded bg-white px-1">.env.local</code> and Vercel env
-          vars. Without it, images are captured but stay unclassified.
+          <strong>Tip:</strong> scan commercial streets (not highways). Bulan tries
+          both sides of the street and skips shots blocked by vehicles. AI uses
+          Hugging Face image classification on the HF router.
         </div>
       </header>
 

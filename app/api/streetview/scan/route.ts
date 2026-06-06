@@ -5,7 +5,10 @@ import {
   type BusinessCategory,
   type DetectionResult,
 } from "@/lib/bulan";
-import { captionStreetViewImage } from "@/lib/huggingface";
+import {
+  analyzeStorefrontImage,
+  scoreCaptureQuality,
+} from "@/lib/huggingface";
 import type { StorefrontSide } from "@/lib/route";
 import {
   buildStreetViewUrl,
@@ -48,7 +51,7 @@ export type ScanResult = {
   detection: DetectionResult | null;
 };
 
-const MAX_WAYPOINTS = 25;
+const MAX_WAYPOINTS = 15;
 const VALID_CATEGORIES: BusinessCategory[] = [
   "coffee_shop",
   "electrician",
@@ -59,15 +62,25 @@ const VALID_CATEGORIES: BusinessCategory[] = [
   "grocery",
 ];
 
-async function fetchStorefrontImage(
+type CaptureCandidate = {
+  imageBase64: string;
+  metadata: StreetViewMetadata;
+  heading: number;
+  side: StorefrontSide;
+  captureLat: number;
+  captureLng: number;
+  qualityScore: number;
+  analysisCaption: string;
+};
+
+async function fetchStorefrontCandidate(
   captureLat: number,
   captureLng: number,
   heading: number,
-): Promise<{ imageBase64: string | null; metadata: StreetViewMetadata | null; status: string }> {
+  side: StorefrontSide,
+): Promise<CaptureCandidate | null> {
   const metadata = await fetchStreetViewMetadata(captureLat, captureLng);
-  if (metadata.status !== "OK") {
-    return { imageBase64: null, metadata, status: metadata.status };
-  }
+  if (metadata.status !== "OK") return null;
 
   const imageResponse = await fetch(
     buildStreetViewUrl(
@@ -84,16 +97,65 @@ async function fetchStorefrontImage(
     ),
   );
 
-  if (!imageResponse.ok) {
-    return { imageBase64: null, metadata, status: "ZERO_RESULTS" };
-  }
+  if (!imageResponse.ok) return null;
 
   const buffer = Buffer.from(await imageResponse.arrayBuffer());
+  const imageBase64 = `data:${imageResponse.headers.get("content-type") ?? "image/jpeg"};base64,${buffer.toString("base64")}`;
+
+  const analysis = await analyzeStorefrontImage(imageBase64);
+  const qualityScore = analysis
+    ? scoreCaptureQuality(analysis)
+    : 0;
+
   return {
-    imageBase64: `data:${imageResponse.headers.get("content-type") ?? "image/jpeg"};base64,${buffer.toString("base64")}`,
+    imageBase64,
     metadata,
-    status: "OK",
+    heading,
+    side,
+    captureLat,
+    captureLng,
+    qualityScore,
+    analysisCaption: analysis?.caption ?? "",
   };
+}
+
+async function captureBestStorefront(
+  lat: number,
+  lng: number,
+  routeHeading: number,
+  preferredSide: StorefrontSide,
+): Promise<CaptureCandidate | null> {
+  const rightHeading = (routeHeading + 90) % 360;
+  const leftHeading = (routeHeading + 270) % 360;
+
+  const attempts: Array<{ heading: number; side: StorefrontSide }> =
+    preferredSide === "right"
+      ? [
+          { heading: rightHeading, side: "right" },
+          { heading: leftHeading, side: "left" },
+        ]
+      : [
+          { heading: leftHeading, side: "left" },
+          { heading: rightHeading, side: "right" },
+        ];
+
+  let best: CaptureCandidate | null = null;
+
+  for (const attempt of attempts) {
+    const candidate = await fetchStorefrontCandidate(
+      lat,
+      lng,
+      attempt.heading,
+      attempt.side,
+    );
+    if (!candidate) continue;
+    if (!best || candidate.qualityScore > best.qualityScore) {
+      best = candidate;
+    }
+    if (candidate.qualityScore >= 70) break;
+  }
+
+  return best;
 }
 
 export async function POST(request: NextRequest) {
@@ -126,15 +188,14 @@ export async function POST(request: NextRequest) {
   const includeImages = body.includeImages ?? true;
   const hasHfKey = Boolean(process.env.HUGGINGFACE_API_KEY);
   const results: ScanResult[] = [];
+  let streetViewCalls = 0;
 
   for (const [index, waypoint] of waypoints.entries()) {
     const lat = Number(waypoint.lat);
     const lng = Number(waypoint.lng);
-    const captureLat = Number(waypoint.captureLat ?? lat);
-    const captureLng = Number(waypoint.captureLng ?? lng);
-    const heading = Number(waypoint.heading ?? 0);
-    const routeHeading = Number(waypoint.routeHeading ?? heading);
-    const side = waypoint.side ?? (index % 2 === 0 ? "right" : "left");
+    const routeHeading = Number(waypoint.routeHeading ?? waypoint.heading ?? 0);
+    const preferredSide =
+      waypoint.side ?? (index % 2 === 0 ? "right" : "left");
     const distanceM = Number(waypoint.distanceM ?? 0);
 
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
@@ -148,38 +209,57 @@ export async function POST(request: NextRequest) {
     let imageBase64: string | null = null;
     let detection: DetectionResult | null = null;
     let status = "ERROR";
+    let heading = Number(waypoint.heading ?? 0);
+    let side = preferredSide;
+    let captureLat = lat;
+    let captureLng = lng;
 
     try {
       if (includeImages) {
-        const capture = await fetchStorefrontImage(captureLat, captureLng, heading);
-        metadata = capture.metadata;
-        imageBase64 = capture.imageBase64;
-        status = capture.status;
+        const capture = await captureBestStorefront(
+          lat,
+          lng,
+          routeHeading,
+          preferredSide,
+        );
+        streetViewCalls += capture ? 2 : 1;
 
-        if (imageBase64) {
-          const caption = await captionStreetViewImage(imageBase64);
-          if (caption) {
-            detection = classifyFromCaption(caption, businessCategory);
+        if (capture) {
+          metadata = capture.metadata;
+          imageBase64 = capture.imageBase64;
+          heading = capture.heading;
+          side = capture.side;
+          captureLat = capture.captureLat;
+          captureLng = capture.captureLng;
+          status = "OK";
+
+          if (capture.analysisCaption) {
+            detection = classifyFromCaption(
+              capture.analysisCaption,
+              businessCategory,
+            );
           } else if (!hasHfKey) {
             detection = {
               objectType: "unknown",
               businessCategory,
               confidence: 0.2,
-              caption:
-                "Add HUGGINGFACE_API_KEY to .env.local and Vercel for AI classification",
+              caption: "Add HUGGINGFACE_API_KEY for AI classification",
             };
           } else {
             detection = {
               objectType: "unknown",
               businessCategory,
               confidence: 0.2,
-              caption: "AI caption failed — Hugging Face model may be loading, retry shortly",
+              caption: "AI analysis failed — check Hugging Face token permissions",
             };
           }
+        } else {
+          status = "ZERO_RESULTS";
         }
       } else {
-        metadata = await fetchStreetViewMetadata(captureLat, captureLng);
+        metadata = await fetchStreetViewMetadata(lat, lng);
         status = metadata.status;
+        streetViewCalls += 1;
       }
     } catch {
       status = "ERROR";
@@ -215,10 +295,10 @@ export async function POST(request: NextRequest) {
       total: results.length,
       available,
       unavailable: results.length - available,
-      apiCallsUsed: results.length + (includeImages ? available : 0),
+      apiCallsUsed: streetViewCalls + available,
       opportunities,
       aiEnabled: hasHfKey,
-      captureMode: "storefront_perpendicular",
+      captureMode: "storefront_dual_side_hf_router",
     },
   });
 }

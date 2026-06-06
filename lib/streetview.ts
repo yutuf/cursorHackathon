@@ -21,8 +21,8 @@ export type StreetViewMetadata = {
 
 /** Optimized for reading shop facades, not the road ahead */
 export const STOREFRONT_CAPTURE = {
-  pitch: -8,
-  fov: 55,
+  pitch: 0,
+  fov: 65,
   width: 640,
   height: 640,
 } as const;

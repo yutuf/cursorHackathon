@@ -209,6 +209,16 @@ export function classifyFromCaption(
   }
 
   const categoryKeywords = getCategoryKeywords(businessCategory);
+  if (businessCategory === "pharmacy" && containsKeyword(text, ["pharmacy", "drugstore", "eczane"])) {
+    return {
+      objectType: "competitor",
+      businessCategory,
+      confidence: 0.8,
+      caption: text,
+      signText: "pharmacy",
+    };
+  }
+
   if (containsKeyword(text, categoryKeywords)) {
     return {
       objectType: "competitor",
@@ -232,6 +242,18 @@ export function classifyFromCaption(
     "awning",
     "display",
     "window",
+    "pharmacy",
+    "drugstore",
+    "library",
+    "bookshop",
+    "bakery",
+    "barbershop",
+    "salon",
+    "market",
+    "tobacco",
+    "grocery",
+    "street scene",
+    "visible objects",
   ];
 
   if (containsKeyword(text, shopSignals)) {

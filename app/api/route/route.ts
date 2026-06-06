@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     500,
     Math.max(30, Number(body.sampleIntervalM ?? 80)),
   );
-  const maxPoints = Math.min(25, Math.max(2, Number(body.maxPoints ?? 20)));
+  const maxPoints = Math.min(15, Math.max(2, Number(body.maxPoints ?? 15)));
 
   try {
     const route = await fetchDrivingRoute(start, end);
