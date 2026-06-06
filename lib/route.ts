@@ -113,9 +113,9 @@ export function assessRouteForStorefrontScan(
 }
 
 const EARTH_RADIUS_M = 6_371_000;
-const DEFAULT_SAMPLE_INTERVAL_M = 20;
-const DEFAULT_MAX_POINTS = 15;
-const STOREFRONT_OFFSET_M = 0;
+const DEFAULT_SAMPLE_INTERVAL_M = 45;
+const DEFAULT_MAX_POINTS = 12;
+const STOREFRONT_OFFSET_M = 12;
 
 export function haversineDistance(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180;
@@ -145,6 +145,77 @@ export function bearing(from: LatLng, to: LatLng): number {
   return (bearingToDegrees(Math.atan2(y, x)) + 360) % 360;
 }
 
+export function polylineLength(coordinates: LatLng[]): number {
+  let total = 0;
+  for (let index = 0; index < coordinates.length - 1; index += 1) {
+    total += haversineDistance(coordinates[index], coordinates[index + 1]);
+  }
+  return total;
+}
+
+export function pointAtDistance(
+  coordinates: LatLng[],
+  distanceM: number,
+): { point: LatLng; routeHeading: number } {
+  if (coordinates.length === 0) {
+    throw new Error("Cannot sample an empty polyline.");
+  }
+  if (coordinates.length === 1) {
+    return { point: coordinates[0], routeHeading: 0 };
+  }
+
+  const clampedDistance = Math.max(0, Math.min(distanceM, polylineLength(coordinates)));
+  let traversedM = 0;
+
+  for (let index = 0; index < coordinates.length - 1; index += 1) {
+    const start = coordinates[index];
+    const end = coordinates[index + 1];
+    const segmentLength = haversineDistance(start, end);
+    if (segmentLength === 0) continue;
+
+    if (traversedM + segmentLength >= clampedDistance) {
+      const ratio =
+        segmentLength === 0
+          ? 0
+          : (clampedDistance - traversedM) / segmentLength;
+      const point = interpolate(start, end, ratio);
+      const lookAhead =
+        ratio > 0.85 && index < coordinates.length - 2
+          ? coordinates[index + 2]
+          : end;
+      return { point, routeHeading: bearing(point, lookAhead) };
+    }
+
+    traversedM += segmentLength;
+  }
+
+  const last = coordinates[coordinates.length - 1];
+  const previous = coordinates[coordinates.length - 2] ?? last;
+  return { point: last, routeHeading: bearing(previous, last) };
+}
+
+/** Evenly spaced points from route start to end (by distance, not vertex index). */
+export function samplePolylineEvenly(
+  coordinates: LatLng[],
+  pointCount: number,
+): Array<LatLng & { distanceM: number }> {
+  if (coordinates.length === 0 || pointCount < 1) return [];
+  if (pointCount === 1) {
+    return [{ ...coordinates[0], distanceM: 0 }];
+  }
+
+  const totalDistance = polylineLength(coordinates);
+  const samples: Array<LatLng & { distanceM: number }> = [];
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const distanceM = (index / (pointCount - 1)) * totalDistance;
+    const { point } = pointAtDistance(coordinates, distanceM);
+    samples.push({ ...point, distanceM: Math.round(distanceM) });
+  }
+
+  return samples;
+}
+
 export function sampleRouteWaypoints(
   coordinates: LatLng[],
   intervalM = DEFAULT_SAMPLE_INTERVAL_M,
@@ -155,46 +226,25 @@ export function sampleRouteWaypoints(
     return [buildWaypoint(coordinates[0], 0, 0, 0)];
   }
 
-  const firstBearing = bearing(coordinates[0], coordinates[1]);
-  const waypoints: RouteWaypoint[] = [
-    buildWaypoint(coordinates[0], firstBearing, 0, 0),
-  ];
-
-  let traversedM = 0;
-  let nextSampleAt = intervalM;
-
-  for (let index = 0; index < coordinates.length - 1; index += 1) {
-    const start = coordinates[index];
-    const end = coordinates[index + 1];
-    const segmentLength = haversineDistance(start, end);
-
-    if (segmentLength === 0) continue;
-
-    while (nextSampleAt <= traversedM + segmentLength) {
-      if (waypoints.length >= maxPoints) {
-        return finalizeWaypoints(waypoints, coordinates, maxPoints);
-      }
-
-      const offsetInSegment = nextSampleAt - traversedM;
-      const ratio = offsetInSegment / segmentLength;
-      const point = interpolate(start, end, ratio);
-      const lookAhead =
-        ratio > 0.85 && index < coordinates.length - 2
-          ? coordinates[index + 2]
-          : end;
-
-      const routeHeading = bearing(point, lookAhead);
-      waypoints.push(
-        buildWaypoint(point, routeHeading, Math.round(nextSampleAt), waypoints.length),
-      );
-
-      nextSampleAt += intervalM;
-    }
-
-    traversedM += segmentLength;
+  const totalDistance = polylineLength(coordinates);
+  if (totalDistance === 0) {
+    return [buildWaypoint(coordinates[0], 0, 0, 0)];
   }
 
-  return finalizeWaypoints(waypoints, coordinates, maxPoints);
+  const countByInterval = Math.max(2, Math.floor(totalDistance / intervalM) + 1);
+  const pointCount = Math.min(maxPoints, countByInterval);
+  const waypoints: RouteWaypoint[] = [];
+
+  for (let index = 0; index < pointCount; index += 1) {
+    const distanceM =
+      pointCount === 1 ? 0 : (index / (pointCount - 1)) * totalDistance;
+    const { point, routeHeading } = pointAtDistance(coordinates, distanceM);
+    waypoints.push(
+      buildWaypoint(point, routeHeading, Math.round(distanceM), index),
+    );
+  }
+
+  return waypoints;
 }
 
 export async function fetchDrivingRoute(
@@ -244,33 +294,6 @@ export async function fetchDrivingRoute(
   };
 }
 
-function finalizeWaypoints(
-  waypoints: RouteWaypoint[],
-  coordinates: LatLng[],
-  maxPoints: number,
-): RouteWaypoint[] {
-  const lastCoordinate = coordinates[coordinates.length - 1];
-  const lastWaypoint = waypoints[waypoints.length - 1];
-  const totalDistance = waypoints.reduce(
-    (max, waypoint) => Math.max(max, waypoint.distanceM),
-    0,
-  );
-
-  const alreadyHasEnd =
-    lastWaypoint &&
-    haversineDistance(lastWaypoint, lastCoordinate) < 20;
-
-  if (!alreadyHasEnd && waypoints.length < maxPoints) {
-    const previous = waypoints[waypoints.length - 1] ?? lastCoordinate;
-    const routeHeading = bearing(previous, lastCoordinate);
-    waypoints.push(
-      buildWaypoint(lastCoordinate, routeHeading, totalDistance, waypoints.length),
-    );
-  }
-
-  return waypoints;
-}
-
 function interpolate(start: LatLng, end: LatLng, ratio: number): LatLng {
   return {
     lat: start.lat + (end.lat - start.lat) * ratio,
@@ -300,6 +323,57 @@ export function offsetByMeters(
       ((angularDistance * Math.sin(headingRad) * 180) /
         (Math.PI * Math.cos(latRad))),
   };
+}
+
+function projectOnSegment(
+  point: LatLng,
+  start: LatLng,
+  end: LatLng,
+): LatLng {
+  const dx = end.lng - start.lng;
+  const dy = end.lat - start.lat;
+  if (dx === 0 && dy === 0) return start;
+
+  const t = Math.max(
+    0,
+    Math.min(
+      1,
+      ((point.lng - start.lng) * dx + (point.lat - start.lat) * dy) /
+        (dx * dx + dy * dy),
+    ),
+  );
+
+  return {
+    lat: start.lat + t * dy,
+    lng: start.lng + t * dx,
+  };
+}
+
+/** Nearest point on a road polyline to a place coordinate. */
+export function closestPointOnPolyline(
+  point: LatLng,
+  polyline: LatLng[],
+): LatLng {
+  if (polyline.length === 0) return point;
+  if (polyline.length === 1) return polyline[0];
+
+  let best = polyline[0];
+  let bestDistance = haversineDistance(point, best);
+
+  for (let index = 0; index < polyline.length - 1; index += 1) {
+    const projected = projectOnSegment(
+      point,
+      polyline[index],
+      polyline[index + 1],
+    );
+    const distance = haversineDistance(point, projected);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      best = projected;
+    }
+  }
+
+  return best;
 }
 
 function buildWaypoint(
