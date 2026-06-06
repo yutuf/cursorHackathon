@@ -7,6 +7,9 @@ import type { MonumationScanNode } from "@/app/api/monumation/scan/route";
 import KvkkMaskedImage from "@/app/components/KvkkMaskedImage";
 import CompareBattleCard from "@/app/components/mood/CompareBattleCard";
 import CorridorStatsPanel from "@/app/components/mood/CorridorStatsPanel";
+import RoutePreviewPanel, {
+  type RoutePreview,
+} from "@/app/components/mood/RoutePreviewPanel";
 import MoodPickerCard from "@/app/components/mood/MoodPickerCard";
 import MoodVectorBars from "@/app/components/mood/MoodVectorBars";
 import {
@@ -31,10 +34,12 @@ type ScanResponse = {
   routeMood: RouteMood;
   coordinates: LatLng[];
   distanceM: number;
+  durationS: number;
   pois: EnrichedMoodPlace[];
   nodes: MonumationScanNode[];
   summary: {
     placesFound: number;
+    samplePoints?: number;
     streetMoodAverage: number;
     placesMoodScore: number;
     photoVisionAverage?: number;
@@ -84,6 +89,8 @@ export default function MonumationNavigator() {
   const [goOnline, setGoOnline] = useState(false);
   const [mapCenter, setMapCenter] = useState<LatLng>(DEFAULT_MAP_CENTER);
   const [validatingPin, setValidatingPin] = useState(false);
+  const [routePreview, setRoutePreview] = useState<RoutePreview | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const moodMeta = ROUTE_MOODS.find((m) => m.id === routeMood)!;
   const theme = getMoodTheme(routeMood);
@@ -109,6 +116,43 @@ export default function MonumationNavigator() {
       { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
     );
   }, []);
+
+  useEffect(() => {
+    if (!start || !end) {
+      setRoutePreview(null);
+      return;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setPreviewLoading(true);
+      try {
+        const response = await fetch("/api/monumation/preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ start, end }),
+        });
+        const body = await response.json();
+        if (cancelled) return;
+        if (!response.ok || !body.ok) {
+          setRoutePreview(null);
+          if (body.reason) setError(body.reason);
+          return;
+        }
+        setRoutePreview(body as RoutePreview);
+        setError(null);
+      } catch {
+        if (!cancelled) setRoutePreview(null);
+      } finally {
+        if (!cancelled) setPreviewLoading(false);
+      }
+    }, 400);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [start, end]);
 
   async function validatePoint(point: LatLng): Promise<boolean> {
     setValidatingPin(true);
@@ -212,8 +256,13 @@ export default function MonumationNavigator() {
     setEnd(null);
     setScan(null);
     setCompare(null);
+    setRoutePreview(null);
     setError(null);
   }
+
+  const mapCoordinates =
+    scan?.coordinates ?? routePreview?.coordinates ?? undefined;
+  const straightM = routePreview?.straightM;
 
   return (
     <div
@@ -364,11 +413,39 @@ export default function MonumationNavigator() {
               </ol>
             </div>
 
+            {start && !end && (
+              <div className={`p-4 text-xs ${theme.panel}`}>
+                <p className={`font-semibold ${theme.fontDisplay}`} style={{ color: theme.ink }}>
+                  Start pinned
+                </p>
+                <p className="mt-1 font-mono text-[10px]" style={{ color: theme.inkMuted }}>
+                  {start.lat.toFixed(4)}, {start.lng.toFixed(4)}
+                </p>
+                <p className="mt-2 italic" style={{ color: theme.inkMuted }}>
+                  Tap end on the map to see distance & walk time.
+                </p>
+              </div>
+            )}
+
+            {start && end && !scan && (
+              <RoutePreviewPanel
+                mood={routeMood}
+                moodLabel={moodMeta.label}
+                start={start}
+                end={end}
+                preview={routePreview}
+                loading={previewLoading}
+              />
+            )}
+
             {scan?.summary && (
               <CorridorStatsPanel
                 mood={routeMood}
                 moodLabel={moodMeta.label}
                 distanceM={scan.distanceM}
+                durationS={scan.durationS}
+                straightM={straightM}
+                samplePoints={scan.summary.samplePoints ?? scan.nodes.length}
                 summary={scan.summary}
                 scoringEngine={scan.scoringEngine}
               />
@@ -405,7 +482,7 @@ export default function MonumationNavigator() {
               center={mapCenter}
               start={start}
               end={end}
-              coordinates={scan?.coordinates}
+              coordinates={mapCoordinates}
               nodes={scan?.nodes}
               pois={scan?.pois}
               routeMood={routeMood}
