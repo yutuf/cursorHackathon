@@ -149,7 +149,11 @@ Sunumda “nasıl yönettik” diye anlat:
 
 ---
 
-## 10. Konuşma metni (Türkçe, 60–90 sn)
+## 10. Konuşma metni
+
+> **Güncel tam script (4 dk):** [`PRESENTATION_SCRIPT.md`](PRESENTATION_SCRIPT.md)
+
+### Eski özet (60–90 sn) — AI bölümü only
 
 > “Hackathon boyunca geliştirme ortamımız Cursor IDE’ydi. Projeye `.cursorrules` ile bir agent constitution yazdık: masterfabric-go dışına çıkmak, yüz tanıma eklemek veya tek seferlik kod yüklemek agent tarafından yasaklandı. Bu sayede AI hızlandırıcı oldu ama stack ve KVKK kırmızı çizgileri korundu.
 >

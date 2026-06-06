@@ -1,118 +1,124 @@
-# Monumation — Jüri sunum scripti (~3 dk)
+# Monumation — Jüri scripti (4 dk toplam: sunum + demo)
 
+> **Hard limit: 4 dakika.** Konuşma + ekran birlikte.  
 > **Canlı:** https://cursor-hackathon-phi.vercel.app/app  
-> **Repo:** https://github.com/yutuf/cursorHackathon  
-> Ekranda `/app` açık olsun. WiFi + Go engine uyanık olsun (önce bir kez Compare bas).
+> **Ön hazırlık:** Sayfa açık, Compare **bir kez** basılmış (engine uyansın). Heritage veya Promenade seçili kalsın.
 
 ---
 
-## [0:00] Açılış
+## Zaman bütçesi
 
-“Merhaba, biz **Monumation**’ı sunuyoruz.
-
-Google Haritalar size A’dan B’ye en kısa yolu verir. Ama o yol **istediğiniz hissi** vermeyebilir — asfalt, sanayi, generic sokak.
-
-Monumation diyor ki: **Bu yürüyüş gerçekten tarihi mi, yeşil mi, sanat dolu mu, canlı mı?** Bunu skorluyoruz.”
-
----
-
-## [0:25] Problem + kim için
-
-“Problem: Yaya veya ziyaretçi rota seçerken **atmosferi** göremiyor.
-
-Kim için: Şehirde yürüyen herkes — turist, yerel, şehir planlama demosu. Sadece İstanbul değil; Google Haritalar’ın olduğu her yerde çalışıyor.”
+| Blok | Süre | Ne |
+|------|------|-----|
+| Hook + problem | 0:30 | Ne, kim için |
+| Canlı demo | 2:20 | Compare → chip → preview (Scan opsiyonel) |
+| Stack + KVKK + AI | 0:50 | Tek nefeste |
+| Kapanış | 0:20 | URL + teşekkür |
 
 ---
 
-## [0:45] Çözüm — bir cümle
+## [0:00 – 0:30] Açılış — TEK PARAGRAF
 
-“Kullanıcı haritada başlangıç-bitiş seçiyor, **mood** seçiyor — heritage, scenic, arts veya promenade. Biz koridor boyunca landmark ve sokak görüntüsünü okuyup **mood skoru** veriyoruz.”
+“Merhaba, **Monumation**.
 
----
+Google A→B yolu verir; **hissi** vermez. Biz yürüyüş koridorunu skorluyoruz: tarihi, yeşil, sanat, canlı sokak — dört mood.
 
-## [1:00] CANLI DEMO — Compare (30 sn)
+Yaya ve ziyaretçi için; İstanbul örnekleri var ama **dünya çapında** çalışıyor. Şimdi canlı göstereceğim.”
 
-*[Ekran: /app → örn. Heritage veya Promenade seç]*
-
-“Önce **Corridor duel** — bu hackathon’un killer demosu.
-
-**Compare**’e basıyorum. İki yol var:
-- **Mood corridor** — Monumation’ın önerdiği koridor
-- **Blind walk** — Google’ın vereceği fonksiyonel, gri yol
-
-Görüyorsunuz: mood koridoru **belirgin şekilde yüksek** skor alıyor. Mesaj: **Rota seçimi önemli** — aynı şehir, farklı his.”
+*(Slayt geçme — direkt `/app`)*
 
 ---
 
-## [1:30] CANLI DEMO — Scan (45 sn)
+## [0:30 – 1:00] DEMO 1 — Compare (30 sn)
 
-*[Demo chip’e bas — örn. Sultanahmet veya Kadıköy Moda]*
+*[Compare’e bas — sonuç gelene kadar konuş]*
 
-“Şimdi tek koridor **Scan**.
+“**Corridor duel**: mood koridoru vs **blind walk** — Google’ın vereceği gri, fonksiyonel yol.
 
-İki pin → sistem yürüyüş rotasını çiziyor. Solda **mesafe, süre, detour** — pin koyar koymaz görüyorsunuz.
+…[yüklenince] İşte: mood path **yüksek**, blind path **düşük**. Aynı şehir — **rota seçimi önemli**.”
 
-**Scan corridor**…
-
-- Önce **street samples** — Street View’dan koridor dokusu
-- Sonra **landmarks** — sadece **Google fotoğrafı olan** yerler; fotosuz POI göstermiyoruz, ViT’e anlamsız görüntü yollamıyoruz
-- Üstte **engine live** — Go backend cloud’da, Hugging Face Spaces’te”
+**Yedek cümle (yüklenirse):** “Δ skor farkı ekranda — Monumation farkı ölçüyor.”
 
 ---
 
-## [2:15] Teknik — 20 sn (soru gelirse)
+## [1:00 – 1:20] DEMO 2 — Mood + chip (20 sn)
 
-“Pipeline kısa:
-**Google** yürüyüş rotası + Places fotoğrafları + Street View örnekleri →
-**Hugging Face** ViT ve DETR görüntüyü okur →
-**Go Monumation Engine** etiketleri mood skoruna çevirir.
+*[Heritage veya Promenade zaten seçili; demo chip’e bas — örn. Sultanahmet veya Kadıköy Moda]*
 
-Yüz tanıma yok. Google zaten blur’luyor. Ham görüntü saklamıyoruz — KVKK dokümanı repo’da.”
+“Mood: **Heritage**. Demo chip — Sultanahmet koridoru. İki pin, rota çizildi.”
 
 ---
 
-## [2:35] AI-assisted development (zorunlu bölüm — 30 sn)
+## [1:20 – 2:30] DEMO 3 — Route preview + Scan (70 sn)
 
-“Geliştirme kültürü:
+*[Solda route preview: km, süre, detour görünüyor]*
 
-Tüm hackathon **Cursor IDE**’de. Projeye **`.cursorrules`** yazdık — AI agent stack dışına çıkamıyor: masterfabric-go, KVKK, incremental commit.
+“Pin koyunca **mesafe ve yürüme süresi** hemen geliyor — scan beklemeden.
 
-GitHub’da **24 ayrı commit** var — tek seferlik zip yok. Jüri commit log’dan süreci görebilir.
+**Scan corridor**… [bas]
 
-**Cursor SDK**’yı da entegre ettik: tarama verisinden kısa **fırsat özeti metni** üreten agent — `npm run brief` ve bir API endpoint. Ana demo Monumation; SDK bonus entegrasyon.
+Pipeline: Google yürüyüş rotası → Places **fotoğraflı** landmark’lar → Hugging Face ViT → **Go engine** cloud’da. Street View tamamlayıcı.
 
-README ve sunum PDF’i repo’da: `docs/pitch/MonumationPitchDeck.pdf`.”
+…[yüklenince, hızlıca] Street samples, landmark kartları, combined skor. Üstte **engine live**.”
 
----
+### ⚠️ Scan yavaşsa (4 dk yetmezse)
 
-## [2:55] Kapanış
-
-“Özet: Google A→B çizer, Monumation **hangi yürüyüşün mood’a uyduğunu** söyler.
-
-Canlı: cursor-hackathon-phi.vercel.app/app
-
-Sorularınız?”
+**Plan B — Scan’i kes:**
+“Scan arka planda; demo özeti Compare’de gördük. Repo’da tam pipeline var.”  
+→ Direkt [2:30] bloğuna atla. **Compare tek başına 4 dk’ya yeter.**
 
 ---
 
-## Yedek — soru gelirse kısa cevaplar
+## [2:30 – 3:20] Stack + KVKK + AI (50 sn) — TEK NEFES
 
-| Soru | Cevap |
-|------|--------|
-| Street View nerede? | Tamamlayıcı katman; **ana sinyal Places fotoğrafları**. |
-| HF hangi model? | `google/vit-base-patch16-224` + `facebook/detr-resnet-50`. |
-| Go ne yapıyor? | ViT label’larını mood vektörüne normalize ediyor. |
-| Denize pin? | Geocode + Street View snap + rota şekli — üç katman red. |
-| Render/Koyeb? | Kart istedi; Go **Hugging Face Spaces**’te, site **Vercel**’de. |
-| Claude kullandınız mı? | Hayır — **Cursor SDK**, Claude değil. |
-| Expo? | Bu slice’ta yok; web + Go odaklıydık. |
+“Stack: **Next.js** Vercel, **Go** Hugging Face Spaces, **HF** ViT+DETR, **Google** Directions Places Street View.
+
+**KVKK:** yüz/plaka yok, Google blur, ham görüntü saklanmıyor — `docs/KVKK_DATA_DELETION.md`.
+
+**AI geliştirme:** Cursor IDE, **`.cursorrules`**, 24 incremental commit GitHub’da. **Cursor SDK** ile tarama özet metni — `npm run brief`. Sunum PDF repo’da.”
 
 ---
 
-## Demo öncesi checklist (sessizce)
+## [3:20 – 4:00] Kapanış (40 sn)
 
-- [ ] `/app` açık, engine live yeşil
-- [ ] Compare bir kez basıldı (HF/Go uyandı)
-- [ ] Demo chip hazır (Heritage veya Promenade en güvenilir)
-- [ ] WiFi stabil
-- [ ] PDF + repo linki hazır
+“Özet: Google çizer, Monumation **hangi yürüyüşün mood’a uyduğunu** söyler.
+
+**cursor-hackathon-phi.vercel.app/app** — repo: github.com/yutuf/cursorHackathon
+
+Teşekkürler, sorularınız?”
+
+*(Soru yoksa 3:40’da bitir — buffer bırak)*
+
+---
+
+## Ultra-kısa ezber (4 dk, sıkışıksan)
+
+1. **(30s)** Monumation = mood skoru, Google sadece A→B  
+2. **(30s)** Compare: mood vs blind, mood kazanır  
+3. **(20s)** Demo chip, pinler, rota  
+4. **(70s)** Preview stats + Scan (veya Plan B)  
+5. **(50s)** Next+Go+HF+Google, KVKK, Cursor ruleset+SDK+24 commit  
+6. **(20s)** URL, teşekkür  
+
+---
+
+## Demo öncesi — 4 dk için kritik
+
+- [ ] `/app` açık, **Compare önceden 1×** basıldı
+- [ ] Mood: **Heritage** veya **Promenade** (en stabil)
+- [ ] Demo chip: **Sultanahmet** veya **Kadıköy Moda**
+- [ ] Scan **yavaşsa Plan B**’yi bil — Compare yeter
+- [ ] WiFi + telefon hotspot yedek
+- [ ] Bu script telefonda açık (yedek)
+
+---
+
+## Yedek Q&A (sunum sonrası)
+
+| Soru | 1 cümle |
+|------|---------|
+| Street View? | Tamamlayıcı; ana sinyal **Places fotoğrafları**. |
+| HF model? | ViT + DETR, router API. |
+| Go? | Label → mood vektörü, HF Spaces’te. |
+| Cursor SDK? | Tarama verisinden **kısa özet metin** — brief agent. |
+| Claude? | Hayır, **Cursor SDK**. |
