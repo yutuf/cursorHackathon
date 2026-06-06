@@ -10,5 +10,6 @@ FROM alpine:3.21
 RUN apk add --no-cache ca-certificates
 WORKDIR /app
 COPY --from=build /src/monumation-api .
+ENV PORT=8000
 EXPOSE 8000
 CMD ["./monumation-api"]

@@ -217,7 +217,12 @@ export async function POST(request: NextRequest) {
   const routeMood = VALID_MOODS.includes(body.routeMood as RouteMood)
     ? (body.routeMood as RouteMood)
     : "heritage";
-  const maxPoints = Math.min(MAX_POINTS, Math.max(3, body.maxPoints ?? 8));
+  const vercelFast = Boolean(process.env.VERCEL);
+  const defaultPoints = vercelFast ? 3 : 6;
+  const maxPoints = Math.min(
+    MAX_POINTS,
+    Math.max(3, body.maxPoints ?? defaultPoints),
+  );
 
   try {
     const endpoints = await validateWalkableEndpoints(start, end);

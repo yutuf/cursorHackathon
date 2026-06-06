@@ -1,0 +1,7 @@
+monumation-api.exe
+monumation-api
+*.test
+.git
+scripts/
+postman/
+internal/infrastructure/postgres/migrations/

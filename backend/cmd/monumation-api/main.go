@@ -18,7 +18,7 @@ func main() {
 		port = os.Getenv("MONUMATION_PORT")
 	}
 	if port == "" {
-		port = "8090"
+		port = "8000"
 	}
 
 	mux := http.NewServeMux()

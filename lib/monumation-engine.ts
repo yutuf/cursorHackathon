@@ -1,11 +1,13 @@
 import type { RouteMood } from "@/lib/monumation";
 import type { LatLng } from "@/lib/route";
 
-const DEFAULT_GO_URL = "http://localhost:8090";
+const LOCAL_GO_URL = "http://localhost:8090";
 
 function goBaseUrl(): string | null {
   const url = process.env.MONUMATION_GO_URL?.trim();
-  return url || DEFAULT_GO_URL;
+  if (url) return url.replace(/\/$/, "");
+  if (process.env.VERCEL) return null;
+  return LOCAL_GO_URL;
 }
 
 export type GoNormalizeResult = {
@@ -45,7 +47,7 @@ export async function checkGoEngineHealth(): Promise<{
 
   try {
     const response = await fetch(`${base}/health`, {
-      signal: AbortSignal.timeout(2500),
+      signal: AbortSignal.timeout(12_000),
     });
     if (!response.ok) return { online: false };
     const body = (await response.json()) as { stack?: string };
