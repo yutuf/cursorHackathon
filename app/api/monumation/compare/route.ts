@@ -1,9 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
-import { scoreCorridorFast } from "@/lib/monumation-corridor";
+import {
+  scoreCorridorFast,
+  type CorridorScoreResult,
+} from "@/lib/monumation-corridor";
 import type { RouteMood } from "@/lib/monumation";
 import { getCorridorComparePair } from "@/lib/places-mood";
 
 const VALID_MOODS: RouteMood[] = ["heritage", "scenic", "arts", "promenade"];
+
+function poiDensityPerKm(result: CorridorScoreResult): number {
+  return result.summary.placesFound / Math.max(0.35, result.distanceM / 1000);
+}
+
+function pickCompareWinner(
+  good: CorridorScoreResult,
+  weak: CorridorScoreResult,
+): "good" | "weak" {
+  if (good.summary.combinedScore !== weak.summary.combinedScore) {
+    return good.summary.combinedScore > weak.summary.combinedScore
+      ? "good"
+      : "weak";
+  }
+  return poiDensityPerKm(good) >= poiDensityPerKm(weak) ? "good" : "weak";
+}
 
 export const maxDuration = 60;
 
@@ -28,8 +47,7 @@ export async function POST(request: NextRequest) {
       scoreCorridorFast(pair.weak.name, pair.weak.start, pair.weak.end, routeMood),
     ]);
 
-    const winner =
-      good.summary.combinedScore >= weak.summary.combinedScore ? "good" : "weak";
+    const winner = pickCompareWinner(good, weak);
 
     const { checkGoEngineHealth } = await import("@/lib/monumation-engine");
     const goHealth = await checkGoEngineHealth();

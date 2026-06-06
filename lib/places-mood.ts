@@ -110,10 +110,10 @@ export const CORRIDOR_COMPARE_PAIRS: CorridorComparePair[] = [
       tip: "Café terraces and pedestrian life.",
     },
     weak: {
-      name: "Warehouse district crossing",
-      start: { lat: 41.002, lng: 28.952 },
-      end: { lat: 41.008, lng: 28.962 },
-      tip: "Industrial crossing with sparse café culture.",
+      name: "Zeytinburnu industrial frontage",
+      start: { lat: 40.992, lng: 28.901 },
+      end: { lat: 40.998, lng: 28.912 },
+      tip: "Warehouses and arterials — sparse café promenade culture.",
     },
   },
   {
@@ -238,9 +238,22 @@ export async function discoverMoodPlacesAlongRoute(
   );
 }
 
-export function placesMoodScore(pois: MoodPlace[], mood: RouteMood): number {
+/** POI registry score — density per km matters, not raw count alone. */
+export function placesMoodScore(
+  pois: MoodPlace[],
+  mood: RouteMood,
+  routeDistanceM = 1000,
+): number {
   const matching = pois.filter((p) => p.mood === mood).length;
-  return Math.min(100, matching * 12 + (matching > 0 ? 20 : 0));
+  if (matching === 0) return 0;
+
+  const km = Math.max(0.35, routeDistanceM / 1000);
+  const perKm = matching / km;
+
+  // ~40 POIs/km ≈ 60, ~150/km ≈ 85, ~250/km ≈ 95+
+  const densityScore = Math.min(70, Math.round(Math.log1p(perKm) * 16));
+  const breadthScore = Math.min(30, Math.round(Math.sqrt(matching) * 1.8));
+  return Math.min(100, densityScore + breadthScore);
 }
 
 export function combinedRouteScore(

@@ -2,8 +2,8 @@ import { fetchGoogleDirections } from "@/lib/google-maps";
 import { corridorVerdict, type RouteMood } from "@/lib/monumation";
 import { combinedRouteScore, placesMoodScore } from "@/lib/places-mood";
 import {
-  averagePhotoMoodScore,
   buildPoiPhotoHighlights,
+  corridorPhotoMoodScore,
   discoverPhotoBackedMoodPlaces,
   type EnrichedMoodPlace,
 } from "@/lib/places-vision";
@@ -40,7 +40,7 @@ export async function scoreCorridorFast(
     8,
     16,
   );
-  const placesScore = placesMoodScore(photoPlaces, mood);
+  const placesScore = placesMoodScore(photoPlaces, mood, route.distanceM);
 
   const enriched = await buildPoiPhotoHighlights(
     photoPlaces,
@@ -48,7 +48,7 @@ export async function scoreCorridorFast(
     photoPoiLimit,
     6,
   );
-  const photoVisionAverage = averagePhotoMoodScore(enriched, mood);
+  const photoVisionAverage = corridorPhotoMoodScore(enriched);
   const visionSignal = photoVisionAverage > 0 ? photoVisionAverage : placesScore * 0.45;
   const combinedScore = combinedRouteScore(visionSignal, placesScore);
 

@@ -269,7 +269,11 @@ export async function POST(request: NextRequest) {
       4,
       8,
     );
-    const placesScore = placesMoodScore(photoPlaces, routeMood);
+    const placesScore = placesMoodScore(
+      photoPlaces,
+      routeMood,
+      route.distanceM,
+    );
     const photoVisionAverage = averagePhotoMoodScore(poiHighlights, routeMood);
 
     const nodes: MonumationScanNode[] = [];

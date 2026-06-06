@@ -181,10 +181,21 @@ export async function enrichPoisWithPhotoVision(
 
 export function averagePhotoMoodScore(
   pois: EnrichedMoodPlace[],
-  mood: RouteMood,
+  _mood: RouteMood,
 ): number {
   const scored = pois.filter((poi) => poi.photoMoodScore !== undefined);
   if (!scored.length) return 0;
   const sum = scored.reduce((acc, poi) => acc + (poi.photoMoodScore ?? 0), 0);
   return Math.round(sum / scored.length);
+}
+
+/** Corridor compare: best photo highlights, not dragged down by one bad frame. */
+export function corridorPhotoMoodScore(pois: EnrichedMoodPlace[]): number {
+  const scores = pois
+    .map((poi) => poi.photoMoodScore ?? 0)
+    .filter((score) => score > 0)
+    .sort((a, b) => b - a);
+  if (!scores.length) return 0;
+  const top = scores.slice(0, 2);
+  return Math.round(top.reduce((acc, score) => acc + score, 0) / top.length);
 }
