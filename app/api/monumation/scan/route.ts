@@ -9,6 +9,7 @@ import {
 } from "@/lib/monumation-engine";
 import {
   averageMoodScore,
+  capWeakPromenadeFromLabels,
   corridorVerdict,
   poiProximityBoost,
   scoreMonumationNode,
@@ -25,10 +26,12 @@ import {
 } from "@/lib/places-mood";
 import {
   averagePhotoMoodScore,
-  enrichPoisWithPhotoVision,
-  type EnrichedMoodPlace,
+  buildPoiPhotoHighlights,
 } from "@/lib/places-vision";
-import { fetchPlacePhotoReference } from "@/lib/google-maps";
+import {
+  validateWalkableEndpoints,
+  validateWalkingRouteShape,
+} from "@/lib/route-restrictions";
 import {
   bearing,
   haversineDistance,
@@ -217,8 +220,34 @@ export async function POST(request: NextRequest) {
   const maxPoints = Math.min(MAX_POINTS, Math.max(3, body.maxPoints ?? 8));
 
   try {
+    const endpoints = await validateWalkableEndpoints(start, end);
+    if (!endpoints.ok) {
+      return NextResponse.json({ error: endpoints.reason }, { status: 400 });
+    }
+
     const goHealth = await checkGoEngineHealth();
-    const route = await fetchGoogleDirections(start, end, [], "walking");
+    let route;
+    try {
+      route = await fetchGoogleDirections(start, end, [], "walking");
+    } catch (directionsError) {
+      const message =
+        directionsError instanceof Error
+          ? directionsError.message
+          : "No walking route found.";
+      return NextResponse.json(
+        {
+          error:
+            "No walking route between these points — they may be separated by water.",
+          detail: message,
+        },
+        { status: 400 },
+      );
+    }
+
+    const shape = validateWalkingRouteShape(start, end, route);
+    if (!shape.ok) {
+      return NextResponse.json({ error: shape.reason }, { status: 400 });
+    }
     const waypoints = sampleRouteWaypoints(
       route.coordinates,
       60,
@@ -229,20 +258,14 @@ export async function POST(request: NextRequest) {
       route.coordinates,
       routeMood,
     );
-    const poisWithRefs: Array<MoodPlace & { photoReference?: string }> = [];
-    for (const poi of discovered.slice(0, 5)) {
-      poisWithRefs.push({
-        ...poi,
-        photoReference: await fetchPlacePhotoReference(poi.placeId),
-      });
-    }
-    const pois: EnrichedMoodPlace[] = await enrichPoisWithPhotoVision(
-      [...poisWithRefs, ...discovered.slice(5)],
+    const poiHighlights = await buildPoiPhotoHighlights(
+      discovered,
       routeMood,
-      3,
+      4,
+      18,
     );
-    const placesScore = placesMoodScore(pois, routeMood);
-    const photoVisionAverage = averagePhotoMoodScore(pois, routeMood);
+    const placesScore = placesMoodScore(discovered, routeMood);
+    const photoVisionAverage = averagePhotoMoodScore(poiHighlights, routeMood);
 
     const nodes: MonumationScanNode[] = [];
 
@@ -256,7 +279,7 @@ export async function POST(request: NextRequest) {
 
       const near = nearestMoodPlace(
         { lat: waypoint.lat, lng: waypoint.lng },
-        pois,
+        discovered,
         250,
       );
       const poiDistanceM = near
@@ -311,7 +334,7 @@ export async function POST(request: NextRequest) {
         heading,
         imageBase64,
         streetViewStatus,
-        kvkkMasked: Boolean(imageBase64),
+        kvkkMasked: false,
         nearbyPoi: near?.name,
         poiDistanceM,
         rawMoodScore,
@@ -358,9 +381,13 @@ export async function POST(request: NextRequest) {
         );
         target.dominant_mood_tag = goNode.dominant_mood_tag;
         target.rawMoodScore = goScoreForMood(goNode, routeMood);
-        target.kvkkMasked = goNode.kvkk_masked || target.kvkkMasked;
+        target.kvkkMasked = false;
         target.scoringEngine = "monumation-go";
       }
+    }
+
+    for (const node of nodes) {
+      capWeakPromenadeFromLabels(node);
     }
 
     const streetMoodAverage = averageMoodScore(nodes, routeMood);
@@ -381,11 +408,11 @@ export async function POST(request: NextRequest) {
       coordinates: route.coordinates,
       distanceM: route.distanceM,
       durationS: route.durationS,
-      pois,
+      pois: poiHighlights,
       nodes,
       summary: {
         samplePoints: nodes.length,
-        placesFound: pois.length,
+        placesFound: discovered.length,
         streetMoodAverage,
         placesMoodScore: placesScore,
         photoVisionAverage,
@@ -399,7 +426,7 @@ export async function POST(request: NextRequest) {
         corridorVerdict: corridorVerdict(
           streetMoodAverage,
           placesScore,
-          pois.length,
+          discovered.length,
           routeMood,
         ),
       },

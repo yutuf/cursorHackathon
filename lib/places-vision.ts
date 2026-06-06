@@ -1,5 +1,5 @@
 import { analyzeStorefrontQuick } from "@/lib/huggingface";
-import { fetchPlacePhoto } from "@/lib/google-maps";
+import { fetchPlacePhoto, fetchPlacePhotoReference } from "@/lib/google-maps";
 import { applyKvkkPipelineGate } from "@/lib/kvkk";
 import {
   normalizeViaGoEngine,
@@ -100,35 +100,65 @@ async function enrichFromNearby(
     photoDominantTag: vision.dominantTag,
     photoLabels: vision.labels,
     scoringEngine: vision.scoringEngine,
-    kvkkMasked: true,
   };
 }
 
-/** Run HF ViT on Google Places photos for the top POIs along a corridor. */
+/** Attach Google photo refs — reuse nearby-search refs before hitting Place Details. */
+export async function attachPhotoReferences(
+  pois: MoodPlace[],
+  maxDetailLookups = 18,
+): Promise<Array<MoodPlace & { photoReference?: string }>> {
+  const result: Array<MoodPlace & { photoReference?: string }> = [];
+  let detailFetches = 0;
+
+  for (const poi of pois) {
+    if (poi.photoReference) {
+      result.push(poi);
+      continue;
+    }
+    if (detailFetches < maxDetailLookups) {
+      const photoReference = await fetchPlacePhotoReference(poi.placeId);
+      detailFetches += 1;
+      result.push({ ...poi, photoReference });
+      continue;
+    }
+    result.push(poi);
+  }
+
+  return result;
+}
+
+/** ViT on up to `maxHighlights` POIs that actually have Google photos. */
+export async function buildPoiPhotoHighlights(
+  pois: MoodPlace[],
+  mood: RouteMood,
+  maxHighlights = 4,
+  maxDetailLookups = 18,
+): Promise<EnrichedMoodPlace[]> {
+  const withRefs = await attachPhotoReferences(pois, maxDetailLookups);
+  const candidates = withRefs.filter((poi) => poi.photoReference);
+  const highlights: EnrichedMoodPlace[] = [];
+
+  for (const poi of candidates) {
+    if (highlights.length >= maxHighlights) break;
+    try {
+      const enriched = await enrichFromNearby(poi, poi.photoReference, mood);
+      if (enriched.photoUrl) highlights.push(enriched);
+    } catch {
+      // skip failed photo fetch / vision
+    }
+  }
+
+  return highlights;
+}
+
+/** @deprecated Use buildPoiPhotoHighlights — returns only POIs with photos. */
 export async function enrichPoisWithPhotoVision(
   pois: MoodPlace[],
   mood: RouteMood,
   limit = 3,
 ): Promise<EnrichedMoodPlace[]> {
-  const targets = pois.slice(0, limit);
-  const enriched: EnrichedMoodPlace[] = [];
-
-  for (const poi of targets) {
-    enriched.push(poi);
-  }
-
-  for (let index = 0; index < targets.length; index += 1) {
-    const poi = targets[index] as MoodPlace & { photoReference?: string };
-    if (!poi.photoReference) continue;
-
-    try {
-      enriched[index] = await enrichFromNearby(poi, poi.photoReference, mood);
-    } catch {
-      enriched[index] = poi;
-    }
-  }
-
-  return [...enriched, ...pois.slice(limit)];
+  return buildPoiPhotoHighlights(pois, mood, limit, limit + 8);
 }
 
 export function averagePhotoMoodScore(

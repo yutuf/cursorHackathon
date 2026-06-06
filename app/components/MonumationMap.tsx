@@ -14,7 +14,7 @@ import {
 import { moodColor, scoreForMood, type MonumationNode, type RouteMood } from "@/lib/monumation";
 import { getMoodTheme } from "@/lib/mood-theme";
 import type { MoodPlace } from "@/lib/places-mood";
-import { ISTANBUL_PRESETS } from "@/lib/streetview";
+import { DEFAULT_MAP_CENTER } from "@/lib/streetview";
 import type { LatLng } from "@/lib/route";
 import "leaflet/dist/leaflet.css";
 
@@ -74,7 +74,7 @@ function FitRoute({ points }: { points: LatLng[] }) {
 }
 
 export default function MonumationMap({
-  center = ISTANBUL_PRESETS[1],
+  center = DEFAULT_MAP_CENTER,
   start,
   end,
   coordinates = [],

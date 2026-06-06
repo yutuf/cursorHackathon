@@ -35,24 +35,19 @@ export default function CorridorStatsPanel({
   const theme = getMoodTheme(mood);
 
   return (
-    <div
-      className={`overflow-hidden rounded-2xl border ${theme.border} bg-gradient-to-br ${theme.gradientBold}`}
-    >
+    <div className={`overflow-hidden ${theme.panel}`}>
       <div
         className="border-b px-4 py-3"
-        style={{
-          borderColor: `${theme.accent}22`,
-          background: theme.pattern,
-        }}
+        style={{ borderColor: `${theme.accent}25` }}
       >
-        <div className="flex items-center gap-2">
-          <span className="text-lg">{theme.emoji}</span>
+        <div className="flex items-center gap-3">
+          <span className="text-xl">{theme.emoji}</span>
           <div>
-            <p className={`text-sm font-semibold ${theme.text}`}>
-              {moodLabel} corridor
+            <p className={`text-sm font-semibold ${theme.fontDisplay}`} style={{ color: theme.ink }}>
+              {moodLabel}
             </p>
-            <p className="text-[10px] text-zinc-600">
-              {(distanceM / 1000).toFixed(2)} km · {summary.placesFound} stops
+            <p className="text-[10px] italic" style={{ color: theme.inkMuted }}>
+              {(distanceM / 1000).toFixed(2)} km · {summary.placesFound} stops · {theme.vibe}
             </p>
           </div>
         </div>
@@ -62,8 +57,9 @@ export default function CorridorStatsPanel({
         <div className="flex justify-center py-1">
           <MoodScoreGauge
             score={summary.combinedScore}
-            label="Combined mood score"
+            label="Corridor score"
             accent={theme.accent}
+            fontDisplay={theme.fontDisplay}
           />
         </div>
 
@@ -73,11 +69,16 @@ export default function CorridorStatsPanel({
           photo={summary.photoVisionAverage ?? 0}
           combined={summary.combinedScore}
           accent={theme.accent}
+          ink={theme.ink}
+          inkMuted={theme.inkMuted}
         />
 
-        <div className="rounded-xl border border-white/60 bg-white/50 p-3">
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
-            Mood vector profile
+        <div className="pt-1">
+          <p
+            className={`mb-2 text-[10px] font-semibold uppercase tracking-[0.15em] ${theme.fontDisplay}`}
+            style={{ color: theme.inkMuted }}
+          >
+            Mood vectors
           </p>
           <MoodVectorBars
             heritage={summary.heritageAverage}
@@ -89,19 +90,23 @@ export default function CorridorStatsPanel({
         </div>
 
         {scoringEngine && (
-          <p className="text-center text-[11px] font-medium text-emerald-800">
+          <p
+            className="text-center text-[11px] font-medium"
+            style={{ color: theme.accentSoft }}
+          >
             {scoringEngine === "monumation-go"
-              ? "⚡ Monumation Engine (Go)"
-              : "Next.js scoring fallback"}
+              ? `${theme.ornament} Go engine`
+              : "Next.js fallback"}
           </p>
         )}
 
         {summary.corridorVerdict && (
           <p
-            className={`rounded-xl border px-3 py-2.5 text-xs leading-relaxed ${theme.text}`}
+            className={`px-3 py-2.5 text-xs leading-relaxed italic ${theme.fontBody}`}
             style={{
-              borderColor: `${theme.accent}33`,
-              backgroundColor: `${theme.accentMuted}88`,
+              color: theme.ink,
+              backgroundColor: theme.accentMuted,
+              borderLeft: `3px solid ${theme.accent}`,
             }}
           >
             {summary.corridorVerdict}

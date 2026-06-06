@@ -27,12 +27,18 @@ export const STOREFRONT_CAPTURE = {
   height: 640,
 } as const;
 
-export const ISTANBUL_PRESETS = [
+/** Example coordinates for hackathon demos — not a geographic limit. */
+export const DEMO_PRESETS = [
   { name: "Sultanahmet", lat: 41.005409, lng: 28.976814 },
   { name: "Taksim", lat: 41.0369, lng: 28.985 },
   { name: "Kadıköy", lat: 40.9902, lng: 29.0257 },
   { name: "Başakşehir", lat: 41.0934, lng: 28.8024 },
 ] as const;
+
+/** @deprecated Use DEMO_PRESETS */
+export const ISTANBUL_PRESETS = DEMO_PRESETS;
+
+export const DEFAULT_MAP_CENTER = { lat: 41.0086, lng: 28.9802 };
 
 export function getApiKey(): string {
   const key = process.env.GOOGLE_STREET_VIEW_API_KEY;

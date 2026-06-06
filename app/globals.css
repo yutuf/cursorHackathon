@@ -1,26 +1,207 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #f4ebe0;
+  --foreground: #2c1810;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-source-serif);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* —— Mood typography —— */
+.font-heritage-display {
+  font-family: var(--font-playfair), "Times New Roman", serif;
+}
+.font-heritage-body {
+  font-family: var(--font-source-serif), Georgia, serif;
+}
+.font-scenic-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+.font-scenic-body {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+.font-arts-display {
+  font-family: var(--font-syne), system-ui, sans-serif;
+  letter-spacing: -0.02em;
+}
+.font-arts-body {
+  font-family: var(--font-dm-sans), system-ui, sans-serif;
+}
+.font-promenade-display {
+  font-family: var(--font-lora), Georgia, serif;
+}
+.font-promenade-body {
+  font-family: var(--font-lora), Georgia, serif;
+}
+
+/* —— Mood page atmospheres —— */
+.mood-page-heritage {
+  background-color: #f4ebe0;
+  background-image: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 27px,
+      rgba(122, 59, 18, 0.035) 28px
+    ),
+    radial-gradient(circle at 85% 5%, rgba(201, 162, 39, 0.12) 0%, transparent 40%);
+}
+.mood-page-scenic {
+  background-color: #e8f2ea;
+  background-image: radial-gradient(circle at 10% 80%, rgba(74, 124, 89, 0.2) 0%, transparent 45%),
+    radial-gradient(circle at 90% 15%, rgba(47, 93, 58, 0.12) 0%, transparent 40%);
+}
+.mood-page-arts {
+  background-color: #f4f1ec;
+  background-image: linear-gradient(135deg, rgba(76, 29, 149, 0.04) 25%, transparent 25%),
+    linear-gradient(225deg, rgba(236, 72, 153, 0.04) 25%, transparent 25%);
+}
+.mood-page-promenade {
+  background-color: #fff8f0;
+  background-image: radial-gradient(ellipse at 15% 0%, rgba(198, 93, 59, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 85% 100%, rgba(156, 66, 33, 0.08) 0%, transparent 45%);
+}
+
+/* —— Cards & panels —— */
+.mood-card-heritage {
+  background: linear-gradient(180deg, #faf4ea 0%, #f0e6d6 100%);
+  border: 2px solid rgba(196, 165, 116, 0.65);
+  box-shadow: 2px 3px 0 rgba(60, 40, 23, 0.12);
+}
+.mood-card-active-heritage {
+  box-shadow: 3px 4px 0 rgba(122, 59, 18, 0.22);
+  outline: 1px solid rgba(201, 162, 39, 0.45);
+}
+.mood-panel-heritage {
+  background: rgba(250, 244, 234, 0.92);
+  border: 2px solid rgba(196, 165, 116, 0.55);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+.mood-card-scenic {
+  background: linear-gradient(165deg, #f0f7f1 0%, #dce9df 100%);
+  border: 1px solid rgba(143, 185, 150, 0.75);
+  border-radius: 1.25rem;
+}
+.mood-card-active-scenic {
+  box-shadow: 0 8px 24px rgba(47, 93, 58, 0.15);
+}
+.mood-panel-scenic {
+  background: rgba(240, 247, 241, 0.94);
+  border: 1px solid rgba(143, 185, 150, 0.65);
+  border-radius: 1.25rem;
+}
+
+.mood-card-arts {
+  background: #faf9fc;
+  border: 1px solid rgba(20, 18, 26, 0.12);
+  border-left: 4px solid #4c1d95;
+}
+.mood-card-active-arts {
+  box-shadow: 6px 6px 0 rgba(76, 29, 149, 0.12);
+}
+.mood-panel-arts {
+  background: rgba(250, 249, 252, 0.95);
+  border: 1px solid rgba(20, 18, 26, 0.1);
+  border-left: 4px solid #4c1d95;
+}
+
+.mood-card-promenade {
+  background: linear-gradient(180deg, #fffaf5 0%, #fceee3 100%);
+  border: 1px solid rgba(212, 165, 116, 0.7);
+  border-radius: 1rem;
+}
+.mood-card-active-promenade {
+  box-shadow: 0 6px 20px rgba(156, 66, 33, 0.14);
+}
+.mood-panel-promenade {
+  background: rgba(255, 250, 245, 0.94);
+  border: 1px solid rgba(212, 165, 116, 0.6);
+  border-radius: 1rem;
+}
+
+/* —— Buttons —— */
+.mood-btn-heritage {
+  background: #7a3b12;
+  color: #faf4ea;
+  border: 1px solid #5c2d0e;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+.mood-btn-ghost-heritage {
+  background: transparent;
+  color: #7a3b12;
+  border: 2px solid rgba(196, 165, 116, 0.8);
+}
+
+.mood-btn-scenic {
+  background: #2f5d3a;
+  color: #f0f7f1;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+.mood-btn-ghost-scenic {
+  background: rgba(240, 247, 241, 0.8);
+  color: #2f5d3a;
+  border: 1px solid rgba(143, 185, 150, 0.8);
+  border-radius: 9999px;
+}
+
+.mood-btn-arts {
+  background: #14121a;
+  color: #faf9fc;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.mood-btn-ghost-arts {
+  background: transparent;
+  color: #14121a;
+  border: 1px solid rgba(20, 18, 26, 0.25);
+}
+
+.mood-btn-promenade {
+  background: #9c4221;
+  color: #fffaf5;
+  border-radius: 0.75rem;
+  font-style: italic;
+  font-weight: 600;
+}
+.mood-btn-ghost-promenade {
+  background: rgba(255, 250, 245, 0.9);
+  color: #9c4221;
+  border: 1px solid rgba(212, 165, 116, 0.75);
+  border-radius: 0.75rem;
+}
+
+/* —— Landing editorial —— */
+.landing-hero {
+  background: #1e1410;
+  color: #f4ebe0;
+}
+.landing-mood-heritage {
+  background: linear-gradient(180deg, #3d2817 0%, #2c1810 100%);
+  color: #f0e2cf;
+}
+.landing-mood-scenic {
+  background: linear-gradient(165deg, #1a3322 0%, #2f5d3a 100%);
+  color: #d8eadc;
+}
+.landing-mood-arts {
+  background: linear-gradient(135deg, #14121a 0%, #2d1b4e 100%);
+  color: #ede8f5;
+}
+.landing-mood-promenade {
+  background: linear-gradient(180deg, #3c2415 0%, #9c4221 100%);
+  color: #fde8d8;
 }

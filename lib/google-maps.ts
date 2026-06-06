@@ -11,6 +11,7 @@ const PLACES_NEARBY_BASE =
 const PLACE_DETAILS_BASE =
   "https://maps.googleapis.com/maps/api/place/details/json";
 const PLACE_PHOTO_BASE = "https://maps.googleapis.com/maps/api/place/photo";
+const GEOCODE_BASE = "https://maps.googleapis.com/maps/api/geocode/json";
 
 export type NearbyPlace = {
   placeId: string;
@@ -284,6 +285,29 @@ function parseNearbyResults(
 }
 
 /** Nearby search filtered by Google place type (for area discovery). */
+type GeocodeResponse = {
+  status: string;
+  results?: Array<{
+    formatted_address: string;
+    types: string[];
+  }>;
+  error_message?: string;
+};
+
+/** Reverse geocode a pin — used to reject sea / non-walkable drops. */
+export async function reverseGeocode(point: LatLng): Promise<GeocodeResponse> {
+  const url = new URL(GEOCODE_BASE);
+  url.searchParams.set("latlng", `${point.lat},${point.lng}`);
+  url.searchParams.set("key", getApiKey());
+
+  const response = await fetch(url.toString());
+  if (!response.ok) {
+    return { status: "UNKNOWN_ERROR" };
+  }
+
+  return (await response.json()) as GeocodeResponse;
+}
+
 export async function fetchPlacePhotoReference(
   placeId: string,
 ): Promise<string | undefined> {

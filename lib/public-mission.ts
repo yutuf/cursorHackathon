@@ -1,8 +1,8 @@
 export const MISSION_TAGLINE =
-  "Monumation routes Istanbul pedestrians by mood — heritage, green scenic, arts, and promenade corridors — using Google Places and Hugging Face vision with KVKK-compliant, surveillance-free processing.";
+  "Monumation scores walking routes by mood anywhere Google Maps works — heritage, green scenic, arts, and promenade corridors — using Places, Street View, and Hugging Face vision.";
 
 export const MISSION_TAGLINE_TR =
-  "Monumation, İstanbul'da yürüyüşü ruh haline göre yönlendirir: tarihi koridor, yeşil manzara, sanat ve canlı yaşam — Google Places ve Hugging Face ile, KVKK uyumlu ve gözetimsiz.";
+  "Monumation, Google Haritalar'ın olduğu her yerde yürüyüş koridorlarını ruh haline göre puanlar: tarihi, yeşil, sanat ve canlı yaşam — Places, Street View ve Hugging Face ile.";
 
 export const PUBLIC_BENEFIT_PILLARS = [
   {
@@ -31,14 +31,14 @@ export const PUBLIC_BENEFIT_PILLARS = [
     title: "Privacy by design",
     titleTr: "KVKK uyumlu inovasyon",
     description:
-      "Vision on places and streetscape only. Faces and plates anonymized before AI. No identity profiling.",
+      "Uses Google Street View and Places imagery (already face- and plate-blurred). No identity profiling or raw image storage.",
   },
 ] as const;
 
 export const KVKK_BADGES = [
   "Landmarks only",
   "No person tracking",
-  "Face & plate blur",
+  "Google-censored imagery",
   "Data deleted post-event",
 ] as const;
 

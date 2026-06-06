@@ -16,6 +16,7 @@ export type MoodPlace = {
   mood: RouteMood;
   vicinity?: string;
   distanceToRouteM: number;
+  photoReference?: string;
 };
 
 const MOOD_PLACE_TYPES: Record<RouteMood, string[]> = {
@@ -139,7 +140,8 @@ export function getCorridorComparePair(mood: RouteMood): CorridorComparePair {
   );
 }
 
-export const ISTANBUL_DEMO_ROUTES: Array<{
+/** Hackathon example walks — any start/end on the map works worldwide. */
+export const DEMO_ROUTES: Array<{
   name: string;
   mood: RouteMood;
   start: LatLng;
@@ -225,6 +227,7 @@ export async function discoverMoodPlacesAlongRoute(
           mood,
           vicinity: place.vicinity,
           distanceToRouteM: Math.round(dist),
+          photoReference: place.photoReference,
         });
       }
     }

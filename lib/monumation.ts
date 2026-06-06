@@ -129,17 +129,12 @@ const LABEL_TO_TOKEN: Record<string, string> = {
   promenade: "pedestrianized_street",
   pier: "pedestrian_plaza",
   boardwalk: "pedestrianized_street",
-  sidewalk: "pedestrianized_street",
-  street: "pedestrianized_street",
-  alley: "pedestrianized_street",
   spotlight: "decorative_lighting",
   cafe: "cafe_terrace",
   restaurant: "cafe_terrace",
   bakery: "cafe_terrace",
   "coffee shop": "cafe_terrace",
   "grocery store": "storefront_layout",
-  shop: "storefront_layout",
-  store: "storefront_layout",
   bookstore: "storefront_layout",
   confectionery: "storefront_layout",
   deli: "bustling_promenade",
@@ -151,7 +146,18 @@ const LABEL_TO_TOKEN: Record<string, string> = {
   "chainlink fence": "industrial_dumpster",
   barrel: "industrial_dumpster",
   ruin: "shattered_facade",
+  paint: "industrial_dumpster",
+  "paintbrush": "industrial_dumpster",
+  bucket: "industrial_dumpster",
+  "hardware store": "industrial_dumpster",
+  warehouse: "industrial_dumpster",
 };
+
+const PROMENADE_STRONG = new Set([
+  "pedestrianized_street",
+  "cafe_terrace",
+  "bustling_promenade",
+]);
 
 const DETR_TO_TOKEN: Record<string, string> = {
   person: "bustling_promenade",
@@ -288,6 +294,15 @@ export function scoreMonumationNode(
   let art_score = clamp(Math.round(artsN * 28 - pollutionN * 8));
   let promenade_score = clamp(Math.round(promenadeN * 28 - pollutionN * 6));
 
+  const strongPromenade = tokens.some((token) => PROMENADE_STRONG.has(token));
+  const weakRetailOnly =
+    tokens.includes("storefront_layout") && !strongPromenade;
+  if (weakRetailOnly || (pollutionN > 0 && !strongPromenade)) {
+    promenade_score = Math.min(promenade_score, 38);
+  } else if (!strongPromenade && promenade_score > 45) {
+    promenade_score = Math.min(promenade_score, 42);
+  }
+
   const boosts = options?.poiBoost ?? {};
   heritage_score = clamp(heritage_score + (boosts.heritage ?? 0));
   scenic_score = clamp(scenic_score + (boosts.scenic ?? 0));
@@ -324,6 +339,43 @@ export function scoreMoodCapture(
     detrLabels: analysis.detrLabels,
   });
   return scoreForMood(node, mood);
+}
+
+/** Pull down promenade when ViT only sees generic retail / street clutter. */
+export function capWeakPromenadeFromLabels<
+  T extends {
+    heritage_score: number;
+    scenic_score: number;
+    art_score: number;
+    promenade_score: number;
+    dominant_mood_tag: string;
+    visionLabels?: string[];
+  },
+>(node: T): T {
+  if (node.promenade_score <= 42) return node;
+
+  const labels = (node.visionLabels ?? []).join(" ").toLowerCase();
+  const strongLife =
+    /cafe|restaurant|bakery|market|delicatessen|person|bench|terrace|fountain|plaza|promenade|umbrella/.test(
+      labels,
+    );
+  const weakRetail =
+    /paint|hardware|warehouse|industrial|tobacco|signboard|barrel|chainlink|dumpster/.test(
+      labels,
+    );
+  const genericUrban = /street|sidewalk|building|house|shop|store/.test(labels);
+
+  if (!strongLife && (weakRetail || genericUrban)) {
+    node.promenade_score = Math.min(node.promenade_score, 35);
+    node.dominant_mood_tag = dominantMoodTag(
+      node.heritage_score,
+      node.scenic_score,
+      node.art_score,
+      node.promenade_score,
+    );
+  }
+
+  return node;
 }
 
 export function dominantMoodTag(
@@ -375,7 +427,7 @@ export function corridorVerdict(
 
   if (placesFound >= 4 && placesScore >= 55) {
     if (streetAverage < 35) {
-      return `${moodLabel}: strong destinations, generic street facades between them — typical Istanbul corridor. Walk for the POIs, not uniform asphalt aesthetics.`;
+      return `${moodLabel}: strong destinations, generic street facades between them — walk for the POIs, not uniform asphalt aesthetics.`;
     }
     return `${moodLabel}: destinations and streetscape both align — high-confidence corridor.`;
   }

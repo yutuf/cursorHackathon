@@ -1,9 +1,5 @@
-import MonumationNavigator from "@/app/components/MonumationNavigator";
+import LandingPage from "@/app/components/LandingPage";
 
 export default function Home() {
-  return (
-    <div className="min-h-screen bg-zinc-50">
-      <MonumationNavigator />
-    </div>
-  );
+  return <LandingPage />;
 }

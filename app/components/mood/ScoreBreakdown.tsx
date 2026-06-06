@@ -8,6 +8,8 @@ type ScoreBreakdownProps = {
   photo: number;
   combined: number;
   accent: string;
+  ink?: string;
+  inkMuted?: string;
 };
 
 export default function ScoreBreakdown({
@@ -16,6 +18,8 @@ export default function ScoreBreakdown({
   photo,
   combined,
   accent,
+  ink = "#1a1a1a",
+  inkMuted = "#6b7280",
 }: ScoreBreakdownProps) {
   const layers = [
     { label: "Street View + AI", value: street, weight: "35%" },
@@ -27,17 +31,26 @@ export default function ScoreBreakdown({
     <div className="space-y-3">
       <div className="flex items-end justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-zinc-500">
+          <p
+            className="text-[10px] font-semibold uppercase tracking-[0.15em]"
+            style={{ color: inkMuted }}
+          >
             Score breakdown
           </p>
-          <p className="mt-0.5 text-2xl font-bold tabular-nums" style={{ color: accent }}>
+          <p
+            className="mt-0.5 text-2xl font-bold tabular-nums"
+            style={{ color: accent }}
+          >
             {combined}
-            <span className="text-sm font-medium text-zinc-400"> /100</span>
+            <span className="text-sm font-normal opacity-50"> /100</span>
           </p>
         </div>
         <span
-          className="rounded-full px-2.5 py-1 text-[10px] font-bold text-white"
-          style={{ backgroundColor: scoreTierColor(combined) }}
+          className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-white"
+          style={{
+            backgroundColor: scoreTierColor(combined, accent),
+            borderRadius: "2px",
+          }}
         >
           {combined >= 70 ? "A" : combined >= 45 ? "B" : combined >= 25 ? "C" : "D"}
         </span>
@@ -47,28 +60,23 @@ export default function ScoreBreakdown({
         {layers.map((layer) => (
           <div
             key={layer.label}
-            className="flex items-center gap-3 rounded-lg bg-white/60 px-3 py-2"
+            className="flex items-center gap-3 px-1 py-1.5"
+            style={{ borderBottom: `1px solid ${accent}18` }}
           >
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-medium text-zinc-700">
+              <p className="truncate text-xs font-medium" style={{ color: ink }}>
                 {layer.label}
               </p>
-              <p className="text-[10px] text-zinc-400">weight ~{layer.weight}</p>
+              <p className="text-[10px]" style={{ color: inkMuted }}>
+                ~{layer.weight}
+              </p>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-16 overflow-hidden rounded-full bg-black/5">
-                <div
-                  className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${layer.value}%`,
-                    backgroundColor: scoreTierColor(layer.value),
-                  }}
-                />
-              </div>
-              <span className="w-8 text-right text-sm font-bold tabular-nums text-zinc-800">
-                {layer.value}
-              </span>
-            </div>
+            <span
+              className="w-8 text-right text-sm font-bold tabular-nums"
+              style={{ color: ink }}
+            >
+              {layer.value}
+            </span>
           </div>
         ))}
       </div>

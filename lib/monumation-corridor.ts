@@ -8,7 +8,7 @@ import {
 } from "@/lib/places-mood";
 import {
   averagePhotoMoodScore,
-  enrichPoisWithPhotoVision,
+  buildPoiPhotoHighlights,
   type EnrichedMoodPlace,
 } from "@/lib/places-vision";
 import type { LatLng } from "@/lib/route";
@@ -41,10 +41,11 @@ export async function scoreCorridorFast(
   const pois = await discoverMoodPlacesAlongRoute(route.coordinates, mood, 8);
   const placesScore = placesMoodScore(pois, mood);
 
-  const enriched = await enrichPoisWithPhotoVision(
-    await attachPhotoRefsFromDetails(pois),
+  const enriched = await buildPoiPhotoHighlights(
+    pois,
     mood,
     photoPoiLimit,
+    photoPoiLimit + 10,
   );
   const photoVisionAverage = averagePhotoMoodScore(enriched, mood);
   const visionSignal = photoVisionAverage > 0 ? photoVisionAverage : placesScore * 0.45;
@@ -71,20 +72,6 @@ export async function scoreCorridorFast(
       ),
     },
   };
-}
-
-async function attachPhotoRefsFromDetails(
-  pois: MoodPlace[],
-): Promise<Array<MoodPlace & { photoReference?: string }>> {
-  const { fetchPlacePhotoReference } = await import("@/lib/google-maps");
-  const enriched: Array<MoodPlace & { photoReference?: string }> = [];
-
-  for (const poi of pois.slice(0, 5)) {
-    const photoReference = await fetchPlacePhotoReference(poi.placeId);
-    enriched.push({ ...poi, photoReference });
-  }
-
-  return [...enriched, ...pois.slice(5)];
 }
 
 export function blendCorridorScores(

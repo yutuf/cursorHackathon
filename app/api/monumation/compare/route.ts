@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       },
       pitch:
         winner === "good"
-          ? `Same mood (${routeMood}), ${good.summary.combinedScore - weak.summary.combinedScore} pts higher on the heritage/scenic core — corridor choice matters in Istanbul.`
+          ? `Same mood (${routeMood}), ${good.summary.combinedScore - weak.summary.combinedScore} pts higher on the mood-matched corridor — route choice matters.`
           : "Unexpected — verify API keys and retry demo presets.",
     });
   } catch (error) {
