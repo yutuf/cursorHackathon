@@ -517,13 +517,13 @@ export default function MonumationNavigator() {
                 style={{ color: theme.ink }}
               >
                 <span>{theme.emoji}</span>
-                Landmarks with photos
+                Landmarks
               </h2>
               <p className="mt-1 text-xs italic" style={{ color: theme.inkMuted }}>
-                {scan.summary.placesFound} along route
+                {scan.summary.placesFound} photo-backed stops
                 {scan.pois.length > 0
-                  ? ` · ${scan.pois.length} with Google photos`
-                  : " · none with photos"}
+                  ? ` · top ${scan.pois.length} scored with vision`
+                  : ""}
               </p>
             </div>
             {scan.pois.length > 0 && (

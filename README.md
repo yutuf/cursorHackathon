@@ -1,134 +1,158 @@
-# Monumation — Mood-Based Urban Navigation
+# Monumation — Walk any city by mood
 
-**Kamu faydasına uygun** aesthetic routing for **Cursor Hackathon Istanbul** (June 6, 2026). Monumation helps tourists and pedestrians choose *which walk* matches their mood in Istanbul — heritage, scenic green, arts culture, or vibrant promenade — using Google Places, Hugging Face computer vision, and optional Street View corridor sampling.
+Mood-based pedestrian routing for **Cursor Hackathon Istanbul** (June 6, 2026). Monumation scores walking corridors by vibe — heritage, scenic green, arts, or promenade — using **Google Places (photo-backed landmarks only)**, **Hugging Face vision**, optional **Street View** samples, and the **Go Monumation Engine**.
 
-> *"Google tells you what's there. Monumation scores how the corridor feels — and which path is worth your time."*
+> *Google draws A→B. Monumation tells you which walk actually matches your mood.*
 
-## Public benefit (Kamu Faydası)
+- **Landing:** `/`
+- **Navigator:** `/app`
 
-| Pillar | Benefit |
-|--------|---------|
-| **Kültürel koridor yönlendirme** | Steers foot traffic toward heritage and arts corridors instead of overcrowding single landmarks |
-| **Yerel esnaf** | Promenade routing surfaces café streets and bazaars, supporting neighborhood commerce |
-| **Sürdürülebilir turizm** | Reduces random arterial walking — visitors pick mood-aligned paths with real POIs |
-| **KVKK uyumu** | Vision on places and streetscape only — no face recognition or identity profiling |
+## What works today
 
-## Live demo script (2 minutes)
+| Feature | Status |
+|---------|--------|
+| Mood picker (4 corridors) | ✅ |
+| Map pin → walking route scan | ✅ worldwide |
+| Sea / non-walkable pin blocking | ✅ geocode + Street View snap + route shape |
+| Places **with Google photos only** | ✅ no photo = not a landmark for CV |
+| Hugging Face ViT on place photos | ✅ |
+| Street View corridor samples | ✅ supplementary |
+| Corridor battle (good vs weak) | ✅ preset demos |
+| Go scoring engine | ✅ local or Render |
 
-1. Open the app → pick **Heritage Route**
-2. Click **Compare Heritage Route** → show Sultanahmet corridor **~70+** vs Başakşehir strip **~30**
-3. Click **Demo: Sultanahmet → Eminönü** → **Scan mood corridor**
-4. Scroll to **Worth visiting** — point at a mosque/park photo with **Hugging Face: 65+/100**
-5. Mention KVKK mask on Street View samples (supplementary layer)
+## Demo script (~2 min)
 
-## Tech stack
+1. Open `/app` → pick a mood (e.g. **Heritage**)
+2. **Compare** → good corridor scores higher than weak stretch
+3. Tap a **demo chip** (Istanbul examples) or draw two pins on land
+4. **Scan corridor** → street samples first, then landmark cards (all have photos)
+5. Mention: Go engine + HF vision on **Google Places photos** (primary signal)
 
-| Layer | Technology | Hosting |
-|-------|------------|---------|
-| Web | Next.js 16 (App Router, TypeScript, Tailwind) | [Vercel](https://vercel.com) |
-| Backend | Go — `masterfabric-go` (`backend/cmd/monumation-api`) | Local / [Render.com](https://render.com) |
-| Mobile | Expo skipped — responsive Next.js web works on phone browsers | — |
-| AI | Hugging Face ViT + DETR via HF router | Hugging Face |
-| Maps | Google Directions, Places, Street View | Google Cloud |
-
-## How it works
+## Architecture
 
 ```
-Mood selection → Google Directions (walking path)
-       ↓
-┌─────────────────────┬──────────────────────────┐
-│ Google Places       │ Hugging Face on Places   │
-│ (worth visiting)    │ photos (reliable CV)     │
-└─────────────────────┴──────────────────────────┘
-       ↓ optional
-Street View samples (corridor texture, KVKK-masked)
-       ↓
-Combined corridor score + corridor battle compare
+User picks mood → Google Walking Directions
+        ↓
+Google Places along route (photo-backed only)
+        ↓
+Hugging Face ViT on Place Photos  ← primary CV story
+        ↓
+Street View samples (optional texture layer)
+        ↓
+Go Monumation Engine normalizes mood vectors
+        ↓
+Combined score + corridor compare
 ```
 
-**Corridor battle** (`/api/monumation/compare`) — same mood, two paths, side-by-side scores. The demo killer for Istanbul.
+## Local development
 
-## Getting started
-
-**Terminal 1 — Go Monumation Engine (masterfabric-go):**
+**Terminal 1 — Go engine:**
 
 ```bash
-cd backend
-go run ./cmd/monumation-api
-# listens on http://localhost:8090 — look for [Monumation Engine] logs
+npm run go:monumation
+# http://localhost:8090/health
 ```
 
 **Terminal 2 — Next.js:**
 
 ```bash
 npm install
-cp .env.example .env.local   # add API keys
+cp .env.example .env.local   # fill API keys
 npm run dev
 ```
 
-Or from repo root: `npm run go:monumation` (requires Go installed).
+Open [http://localhost:3000](http://localhost:3000) → **Enter the navigator**.
 
-Open [http://localhost:3000](http://localhost:3000). Green badge = Go engine online.
+Navigator shows `engine live` when Go is reachable.
 
-### Environment variables
+## Environment variables
 
-| Variable | Description |
-|----------|-------------|
-| `GOOGLE_STREET_VIEW_API_KEY` | Google Maps Platform key (Directions, Places, Street View, Place Photos) |
-| `HUGGINGFACE_API_KEY` | Hugging Face inference router (ViT + DETR) |
-| `MONUMATION_GO_URL` | Go scoring engine (`http://localhost:8090` or Render URL) |
-| `CURSOR_API_KEY` | Optional — Cursor SDK briefs |
+| Variable | Where | Description |
+|----------|-------|-------------|
+| `GOOGLE_STREET_VIEW_API_KEY` | Vercel | Directions, **Geocoding**, Places, Place Photos, Street View |
+| `HUGGINGFACE_API_KEY` | Vercel | HF inference router (ViT + DETR) |
+| `MONUMATION_GO_URL` | Vercel | Go engine URL (e.g. `https://monumation-go.onrender.com`) |
+| `CURSOR_API_KEY` | Vercel | Optional — opportunity briefs |
 
-Enable in Google Cloud: **Directions API**, **Places API**, **Street View Static API**.
+**Google Cloud APIs to enable:** Directions, Geocoding, Places, Street View Static.
 
-## AI tooling (Cursor IDE)
+## Deploy — Vercel + Go on Render
 
-Developed in **Cursor IDE** with agentic rules in [`.cursorrules`](.cursorrules):
+### 1) Go backend on Render
 
-- Monumation mood scoring matrix (`lib/monumation.ts`)
-- Places photo vision pipeline (`lib/places-vision.ts`)
-- Corridor compare presets (`lib/places-mood.ts`)
-- Go Monumation engine mirror (`backend/internal/application/urbanscan/`)
+**Option A — Blueprint:** connect repo → Render reads [`render.yaml`](render.yaml).
 
-| Stage | Technique | Outcome |
-|-------|-----------|---------|
-| Product pivot | Cursor Agent multi-turn | Bulan → Monumation with hybrid Places + CV |
-| Vision mapping | Iterative label→token expansion | Istanbul-friendly ViT mapping + POI proximity boost |
-| Demo presets | Corridor compare pairs | Reliable live demo without random scans |
+**Option B — Manual Web Service:**
+
+| Setting | Value |
+|---------|-------|
+| Root Directory | `backend` |
+| Runtime | Go |
+| Build Command | `go build -o monumation-api ./cmd/monumation-api` |
+| Start Command | `./monumation-api` |
+| Health Check Path | `/health` |
+
+Render sets `PORT` automatically (the Go binary listens on `PORT` or `MONUMATION_PORT`).
+
+Copy the live URL, e.g. `https://monumation-go-xxxx.onrender.com`.
+
+### 2) Next.js on Vercel
+
+```bash
+npm run build
+npx vercel deploy --prod
+```
+
+Or connect [github.com/yutuf/cursorHackathon](https://github.com/yutuf/cursorHackathon) in the Vercel dashboard.
+
+**Vercel → Project → Settings → Environment Variables:**
+
+```
+GOOGLE_STREET_VIEW_API_KEY=...
+HUGGINGFACE_API_KEY=...
+MONUMATION_GO_URL=https://monumation-go-xxxx.onrender.com
+```
+
+Redeploy after adding env vars. Open `/app` and confirm **engine live**.
+
+> **Note:** Render free tier sleeps after inactivity — first request may take ~30s cold start.
 
 ## API routes
 
 | Route | Purpose |
 |-------|---------|
-| `POST /api/monumation/compare` | Corridor battle — good vs weak path for selected mood |
-| `POST /api/monumation/scan` | Full corridor scan — Places + photo AI + Street View samples |
+| `POST /api/monumation/scan` | Full corridor scan |
+| `POST /api/monumation/compare` | Corridor battle |
+| `POST /api/monumation/validate` | Pin / route walkability check |
+| `GET /api/monumation/engine` | Go engine health proxy |
 
-## KVKK
-
-- Models target **inanimate urban features** only (facades, signage, landmarks)
-- Images pass KVKK pipeline gate before Hugging Face inference
-- UI shows anonymized preview (blur badge) on all photos
-- No face recognition, plate reading, or person profiling
-- Post-event deletion commitment: [KVKK_DATA_DELETION.md](KVKK_DATA_DELETION.md)
-
-## Go backend (masterfabric-go)
+## Go engine endpoints
 
 | Endpoint | Purpose |
 |----------|---------|
-| `GET /health` | Engine status |
-| `POST /monumation/normalize` | Score HF labels → mood vector |
-| `POST /monumation/scan` | Batch corridor scoring + KVKK mask count |
+| `GET /health` | Liveness |
+| `POST /monumation/normalize` | HF labels → mood vector |
+| `POST /monumation/scan` | Batch node scoring |
 
-Next.js calls Go when `MONUMATION_GO_URL` is reachable; falls back to TypeScript scoring otherwise.
+## Places policy
 
-## Deploy
+Only landmarks **with a Google photo** count toward scoring and UI. No photo → skipped (not worth showing to tourists or running ViT on).
 
-```bash
-npm run build
-npx vercel deploy --prod --yes
-```
+## Privacy
 
-Required: `GOOGLE_STREET_VIEW_API_KEY`, `HUGGINGFACE_API_KEY`
+- Uses Google imagery (faces/plates already blurred by Google)
+- No face recognition, plate reading, or identity profiling
+- No raw image storage
+- See [KVKK_DATA_DELETION.md](KVKK_DATA_DELETION.md)
+
+## Tech stack
+
+| Layer | Tech | Host |
+|-------|------|------|
+| Web | Next.js 16, TypeScript, Tailwind | Vercel |
+| Engine | Go `monumation-api` | Render / local |
+| AI | Hugging Face ViT + DETR | HF API |
+| Maps | Google Directions, Places, Street View | Google Cloud |
 
 ## Learn more
 

@@ -11,6 +11,7 @@ import {
   type RouteMood,
 } from "@/lib/monumation";
 import type { MoodPlace } from "@/lib/places-mood";
+import type { LatLng } from "@/lib/route";
 
 export type EnrichedMoodPlace = MoodPlace & {
   photoUrl?: string;
@@ -126,6 +127,23 @@ export async function attachPhotoReferences(
   }
 
   return result;
+}
+
+/** Mood places that actually have a Google photo (nearby ref or Place Details). */
+export async function discoverPhotoBackedMoodPlaces(
+  polyline: LatLng[],
+  mood: RouteMood,
+  searchPointCount = 10,
+  maxDetailLookups = 24,
+): Promise<Array<MoodPlace & { photoReference?: string }>> {
+  const { discoverMoodPlacesAlongRoute } = await import("@/lib/places-mood");
+  const discovered = await discoverMoodPlacesAlongRoute(
+    polyline,
+    mood,
+    searchPointCount,
+  );
+  const withRefs = await attachPhotoReferences(discovered, maxDetailLookups);
+  return withRefs.filter((poi) => Boolean(poi.photoReference));
 }
 
 /** ViT on up to `maxHighlights` POIs that actually have Google photos. */

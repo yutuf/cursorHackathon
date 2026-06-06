@@ -19,7 +19,6 @@ import {
 } from "@/lib/monumation";
 import { blendCorridorScores } from "@/lib/monumation-corridor";
 import {
-  discoverMoodPlacesAlongRoute,
   nearestMoodPlace,
   placesMoodScore,
   type MoodPlace,
@@ -27,6 +26,7 @@ import {
 import {
   averagePhotoMoodScore,
   buildPoiPhotoHighlights,
+  discoverPhotoBackedMoodPlaces,
 } from "@/lib/places-vision";
 import {
   validateWalkableEndpoints,
@@ -254,17 +254,17 @@ export async function POST(request: NextRequest) {
       maxPoints,
     );
 
-    const discovered = await discoverMoodPlacesAlongRoute(
+    const photoPlaces = await discoverPhotoBackedMoodPlaces(
       route.coordinates,
       routeMood,
     );
     const poiHighlights = await buildPoiPhotoHighlights(
-      discovered,
+      photoPlaces,
       routeMood,
       4,
-      18,
+      8,
     );
-    const placesScore = placesMoodScore(discovered, routeMood);
+    const placesScore = placesMoodScore(photoPlaces, routeMood);
     const photoVisionAverage = averagePhotoMoodScore(poiHighlights, routeMood);
 
     const nodes: MonumationScanNode[] = [];
@@ -279,7 +279,7 @@ export async function POST(request: NextRequest) {
 
       const near = nearestMoodPlace(
         { lat: waypoint.lat, lng: waypoint.lng },
-        discovered,
+        photoPlaces,
         250,
       );
       const poiDistanceM = near
@@ -412,7 +412,7 @@ export async function POST(request: NextRequest) {
       nodes,
       summary: {
         samplePoints: nodes.length,
-        placesFound: discovered.length,
+        placesFound: photoPlaces.length,
         streetMoodAverage,
         placesMoodScore: placesScore,
         photoVisionAverage,
@@ -426,7 +426,7 @@ export async function POST(request: NextRequest) {
         corridorVerdict: corridorVerdict(
           streetMoodAverage,
           placesScore,
-          discovered.length,
+          photoPlaces.length,
           routeMood,
         ),
       },

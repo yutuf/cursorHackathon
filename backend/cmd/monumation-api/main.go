@@ -13,7 +13,10 @@ import (
 )
 
 func main() {
-	port := os.Getenv("MONUMATION_PORT")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = os.Getenv("MONUMATION_PORT")
+	}
 	if port == "" {
 		port = "8090"
 	}

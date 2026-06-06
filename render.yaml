@@ -1,0 +1,10 @@
+# Render.com — Monumation Go engine (standalone, no Postgres/Kafka)
+# Dashboard: New → Blueprint → connect this repo, or create Web Service manually.
+services:
+  - type: web
+    name: monumation-go
+    runtime: go
+    rootDir: backend
+    buildCommand: go build -o monumation-api ./cmd/monumation-api
+    startCommand: ./monumation-api
+    healthCheckPath: /health
