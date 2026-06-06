@@ -26,7 +26,8 @@
 | Layer | Technology | Hosting |
 |-------|------------|---------|
 | Web | Next.js 16 (App Router, TypeScript, Tailwind) | [Vercel](https://vercel.com) |
-| Backend | Go — `masterfabric-go` (`backend/`) | [Render.com](https://render.com) |
+| Backend | Go — `masterfabric-go` (`backend/cmd/monumation-api`) | Local / [Render.com](https://render.com) |
+| Mobile | Expo skipped — responsive Next.js web works on phone browsers | — |
 | AI | Hugging Face ViT + DETR via HF router | Hugging Face |
 | Maps | Google Directions, Places, Street View | Google Cloud |
 

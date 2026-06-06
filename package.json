@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "brief": "tsx scripts/generate-brief.ts",
-    "go:monumation": "cd backend && go run ./cmd/monumation-api"
+    "go:monumation": "powershell -ExecutionPolicy Bypass -File ./scripts/start-go-monumation.ps1",
+    "go:build": "cd backend && go build -o monumation-api.exe ./cmd/monumation-api"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.18",

@@ -150,6 +150,7 @@ func isIgnoredGroundVehicle(label string) bool {
 			return true
 		}
 	}
+	return false
 }
 
 func resolveMonumationToken(label string) string {

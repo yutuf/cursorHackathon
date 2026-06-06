@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"strings"
 
 	"github.com/masterfabric-go/masterfabric/internal/domain/urbanscan/model"
