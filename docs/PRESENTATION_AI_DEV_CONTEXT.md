@@ -180,4 +180,4 @@ Sunumda “nasıl yönettik” diye anlat:
 - App: https://cursor-hackathon-phi.vercel.app/app
 - Repo: https://github.com/yutuf/cursorHackathon
 - Go health: https://ykkymc-monumation-go.hf.space/health
-- Pitch: `docs/pitch/MonumationPitchDeck.pptx`
+- Pitch PDF: `docs/pitch/MonumationPitchDeck.pdf`

@@ -196,7 +196,7 @@ npm run brief              # terminal brief via Cursor SDK
 
 ## Learn more
 
-- [Pitch deck](docs/pitch/MonumationPitchDeck.pptx)
+- [Pitch deck (PDF)](docs/pitch/MonumationPitchDeck.pdf) · [PPTX](docs/pitch/MonumationPitchDeck.pptx)
 - [Project docs](docs/README.md)
 - [Hackathon announcement](docs/announcement.txt)
 - [Hackathon rules](docs/RULES.txt)
