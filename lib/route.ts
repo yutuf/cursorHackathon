@@ -3,8 +3,18 @@ export type LatLng = {
   lng: number;
 };
 
+export type StorefrontSide = "left" | "right";
+
 export type RouteWaypoint = LatLng & {
+  /** Camera heading — perpendicular to route, facing shop facades */
   heading: number;
+  /** Direction of travel along the route */
+  routeHeading: number;
+  /** Which side of the street the camera looks toward */
+  side: StorefrontSide;
+  /** Offset capture point closer to the sidewalk/buildings */
+  captureLat: number;
+  captureLng: number;
   distanceM: number;
 };
 
@@ -15,8 +25,9 @@ export type DrivingRoute = {
 };
 
 const EARTH_RADIUS_M = 6_371_000;
-const DEFAULT_SAMPLE_INTERVAL_M = 80;
+const DEFAULT_SAMPLE_INTERVAL_M = 50;
 const DEFAULT_MAX_POINTS = 20;
+const STOREFRONT_OFFSET_M = 12;
 
 export function haversineDistance(a: LatLng, b: LatLng): number {
   const lat1 = (a.lat * Math.PI) / 180;
@@ -53,11 +64,12 @@ export function sampleRouteWaypoints(
 ): RouteWaypoint[] {
   if (coordinates.length === 0) return [];
   if (coordinates.length === 1) {
-    return [{ ...coordinates[0], heading: 0, distanceM: 0 }];
+    return [buildWaypoint(coordinates[0], 0, 0, 0)];
   }
 
+  const firstBearing = bearing(coordinates[0], coordinates[1]);
   const waypoints: RouteWaypoint[] = [
-    { ...coordinates[0], heading: bearing(coordinates[0], coordinates[1]), distanceM: 0 },
+    buildWaypoint(coordinates[0], firstBearing, 0, 0),
   ];
 
   let traversedM = 0;
@@ -83,11 +95,10 @@ export function sampleRouteWaypoints(
           ? coordinates[index + 2]
           : end;
 
-      waypoints.push({
-        ...point,
-        heading: bearing(point, lookAhead),
-        distanceM: Math.round(nextSampleAt),
-      });
+      const routeHeading = bearing(point, lookAhead);
+      waypoints.push(
+        buildWaypoint(point, routeHeading, Math.round(nextSampleAt), waypoints.length),
+      );
 
       nextSampleAt += intervalM;
     }
@@ -155,11 +166,10 @@ function finalizeWaypoints(
 
   if (!alreadyHasEnd && waypoints.length < maxPoints) {
     const previous = waypoints[waypoints.length - 1] ?? lastCoordinate;
-    waypoints.push({
-      ...lastCoordinate,
-      heading: bearing(previous, lastCoordinate),
-      distanceM: totalDistance,
-    });
+    const routeHeading = bearing(previous, lastCoordinate);
+    waypoints.push(
+      buildWaypoint(lastCoordinate, routeHeading, totalDistance, waypoints.length),
+    );
   }
 
   return waypoints;
@@ -174,4 +184,50 @@ function interpolate(start: LatLng, end: LatLng, ratio: number): LatLng {
 
 function bearingToDegrees(radians: number): number {
   return (radians * 180) / Math.PI;
+}
+
+export function offsetByMeters(
+  point: LatLng,
+  headingDegrees: number,
+  distanceM: number,
+): LatLng {
+  const angularDistance = distanceM / EARTH_RADIUS_M;
+  const headingRad = (headingDegrees * Math.PI) / 180;
+  const latRad = (point.lat * Math.PI) / 180;
+
+  return {
+    lat:
+      point.lat +
+      ((angularDistance * Math.cos(headingRad) * 180) / Math.PI),
+    lng:
+      point.lng +
+      ((angularDistance * Math.sin(headingRad) * 180) /
+        (Math.PI * Math.cos(latRad))),
+  };
+}
+
+function buildWaypoint(
+  point: LatLng,
+  routeHeading: number,
+  distanceM: number,
+  index: number,
+): RouteWaypoint {
+  const side: StorefrontSide = index % 2 === 0 ? "right" : "left";
+  const cameraHeading =
+    side === "right"
+      ? (routeHeading + 90) % 360
+      : (routeHeading + 270) % 360;
+  const offsetHeading = side === "right" ? cameraHeading : cameraHeading;
+  const capturePoint = offsetByMeters(point, offsetHeading, STOREFRONT_OFFSET_M);
+
+  return {
+    lat: point.lat,
+    lng: point.lng,
+    heading: cameraHeading,
+    routeHeading,
+    side,
+    captureLat: capturePoint.lat,
+    captureLng: capturePoint.lng,
+    distanceM,
+  };
 }

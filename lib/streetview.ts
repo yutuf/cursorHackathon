@@ -19,6 +19,14 @@ export type StreetViewMetadata = {
   pano_id?: string;
 };
 
+/** Optimized for reading shop facades, not the road ahead */
+export const STOREFRONT_CAPTURE = {
+  pitch: -8,
+  fov: 55,
+  width: 640,
+  height: 640,
+} as const;
+
 export const ISTANBUL_PRESETS = [
   { name: "Sultanahmet", lat: 41.005409, lng: 28.976814 },
   { name: "Taksim", lat: 41.0369, lng: 28.985 },

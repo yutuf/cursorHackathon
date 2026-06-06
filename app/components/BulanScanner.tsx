@@ -171,8 +171,15 @@ export default function BulanScanner() {
           Draw a corridor, scan storefronts with Street View, and discover vacant
           units, rental signs, active shops, and competitors for your{" "}
           <span className="font-medium text-amber-800">{categoryLabel}</span>{" "}
-          idea.
+          idea. Cameras face shop facades on alternating sides of the street — not
+          down the road.
         </p>
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <strong>AI detection:</strong> add{" "}
+          <code className="rounded bg-white px-1">HUGGINGFACE_API_KEY</code> to{" "}
+          <code className="rounded bg-white px-1">.env.local</code> and Vercel env
+          vars. Without it, images are captured but stay unclassified.
+        </div>
       </header>
 
       <section className="grid gap-6 lg:grid-cols-[320px_1fr]">
@@ -390,7 +397,8 @@ export default function BulanScanner() {
                         : ""}
                     </span>
                     <p className="font-medium text-zinc-900">
-                      {result.distanceM}m along corridor
+                      {result.distanceM}m · {result.side} side · heading{" "}
+                      {Math.round(result.heading)}°
                     </p>
                     {result.detection?.caption && (
                       <p className="line-clamp-3 text-zinc-500">
