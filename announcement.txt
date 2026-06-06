@@ -1,0 +1,99 @@
+
+	
+Cursor Hackathon Istanbul
+Jun 6, 9:30 AM GMT+3 · Dozze Coffee Başakşehir
+
+🚨 ZORUNLU GELİŞTİRME BÜLTENİ VE ETKİNLİK
+	
+Gürkan Fikret Günak
+Cursor Hackathon: AI-Driven Kentsel Çözümle
+
+📅 Tarih: 6 Haziran Cumartesi | ⏰ Saat: 10:00 - 17:00 | 📍 Yer: Dozze Coffee Başakşehir
+
+Değerli Katılımcılarımız,
+
+Teknolojiyi soyut bir kavram olmaktan çıkarıp, gerçek bir kentsel bağlamda hayatın tam merkezine taşımak için bir aradayız. Toplumun geneline fayda sağlayacak kamusal çözümler üretirken, uyulması gereken teknik, operasyonel ve etik kurallar aşağıda listelenmiştir.
+
+Hackathon sürecinde ve değerlendirme aşamasında bu bülten temel alınacaktır. Lütfen dikkatle okuyunuz.
+
+💻 1. TEKNİK STACK VE GELİŞTİRME KURALLARI
+
+Ekiplerin aşağıdaki teknoloji yığınına ve mimari kurallara sadık kalması zorunludur:
+
+Web: Next.js
+
+Cross-Platform (Mobil): Expo (Mimari yapı etkinlik başlangıcında teslim edilecektir.)
+
+Backend: Go (Golang) (Mimari yapı etkinlik başlangıcında teslim edilecek ve bu yapıya kesinlikle sadık kalınacaktır.)
+
+Altyapı (Hosting): Web projeleri için Vercel, Backend servisleri için Render.com.
+
+Harici API: Google Street View API (İlk 10.000 istek ücretsiz kotası kullanılacaktır).
+
+🛑 ÖNEMLİ KURAL: Sürekli Commit ve Versiyon Kontrolü (GitHub) Proje kodlarının etkinlik sonunda tek bir parça halinde yüklenmesi KABUL EDİLMEYECEKTİR. Geliştirme sürecinin şeffaflığı adına kodların GitHub'a aşama aşama (commit commit) işlenmesi ve anlamlı commit mesajları yazılması zorunludur. Jüri, geliştirme sürecini bu commit geçmişi üzerinden de değerlendirecektir.
+
+🤖 2. YAPAY ZEKA VE CURSOR KULLANIMI
+
+Geliştirme Ortamı: Tüm projelerin Cursor IDE üzerinde geliştirilmesi ve projelerde "Agentic" kurallı ayarlama (ruleset) kurgusunun oluşturulması zorunludur.
+
+🛑 ÖNEMLİ KURAL: Yapay Zeka Araçları Dökümantasyonu Kullandığınız tüm AI araçlarının (Cursor IDE özellikleri, spesifik prompt teknikleri, entegre edilen ek AI servisleri vb.) projeye nasıl entegre edildiği, geliştirme sürecinizi nasıl hızlandırdığı README dosyasında detaylı ve şeffaf bir şekilde anlatılmak zorunludur.
+
+🔒 3. KVKK VE VERİ GÜVENLİĞİ
+
+Geliştirdiğimiz her algoritmanın etik bir sorumluluğu vardır. Bu kapsamda:
+
+Amaç Sınırlaması: Modeller yalnızca kentsel objeler (tabela tespiti vb.) için kullanılabilir. Kimlik tespiti, profilleme veya kişi/araç takibi kesinlikle yasaktır.
+
+Zorunlu Anonimleştirme: İnsan yüzleri ve araç plakaları, model eğitimi başlamadan önce geri döndürülemez biçimde anonimleştirilmeli/bulanıklaştırılmalıdır.
+
+Veri Güvenliği: Ham veriler şifrelenmemiş bulut depolamaya veya açık GitHub repolarına yüklenemez. İhlaller doğrudan diskalifiye sebebidir.
+
+Silme Taahhüdü: Hackathon sonunda tüm ham görüntüler silinmeli ve bu durum yazılı olarak belgelenmelidir.
+
+🏆 4. DEĞERLENDİRME, SUNUM VE HAKEDİŞ
+
+Ödüllerin (1. Takım: 20.000 TL, 2. Takım: 15.000 TL, 3. Takım: 10.000 TL + Cursor Kredileri) hakedişi jüri puanlaması ile belirlenir.
+
+🛑 ÖNEMLİ KURAL: Canlı Demo ve Sunum Zorunluluğu Etkileyici bir fikir, çalışan bir kod ile kanıtlanmalıdır. Sadece kod teslimi veya ekran görüntüleri yeterli değildir. Ekiplerin etkinlik sonunda jüri karşısında;
+
+Projelerini anlatacakları bir sunum yapması,
+
+Çalışan sistemin Canlı Demosunu (Live Demo) gerçekleştirmesi kesinlikle zorunludur.
+
+Kurumsal Çalışırlık Şartı (Ödül Hakedişi İçin): Maddi ödüle hak kazanmak için şu 4 koşul eksiksiz sağlanmalıdır:
+
+Canlı demo yapılması.
+
+Tekrarlanabilir sonuçlar üretilmesi.
+
+Çalıştırılabilir kaynak kodunun teslimi (Commit geçmişi ile birlikte).
+
+KVKK veri silme/anonimleştirme belgesi.
+
+Puanlama Kriterleri (100 Puan Üzerinden):
+
+30 Puan: Teknik Çalışırlık (Hatasız derlenme, mimariye uyum, canlı demo performansı) Eşitlik durumunda bu puan belirleyicidir.
+
+25 Puan: Doğruluk ve Güvenilirlik (Bilgisayarlı görü başarı oranı)
+
+20 Puan: Kamu Faydasına Uygunluk (Kentsel sorunu çözme potansiyeli)
+
+10 Puan: AI Adaptasyonu (Cursor IDE, Agentic mimari ve AI dökümantasyonu)
+
+10 Puan: KVKK ve Etik Uyum
+
+5 Puan: Sunum ve Dökümantasyon (README kalitesi)
+
+⏱️ KISA AKIŞ HATIRLATMASI
+
+10:00 - 11:00: Pre-Hackathon & Brifing ("Teknik Zorunluluk Kriter Çizelgesi"nin teslimi).
+
+11:00: Başlangıç (Mimari yapıların aktarılması ve veriye erişim).
+
+11:00 - 17:00: Hackathon (Kesintisiz AI-Driven üretim).
+
+17:00 Sonrası: Sunum & Değerlendirme (Canlı demolar ve jüri sunumları).
+
+Bizler sadece kod yazan değil; üreten, sorgulayan ve teknolojinin sorumluluğunu omuzlarında taşıyan bir topluluğun parçasıyız. Geleceği sadece beklemiyoruz; onu birlikte inşa ediyoruz!
+
+Başarılar dileriz. 🚀

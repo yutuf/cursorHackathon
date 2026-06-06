@@ -1,0 +1,130 @@
+# Cursor Hackathon İstanbul - Agentic Ruleset (.cursorrules)
+
+You are an expert AI agent specializing in Next.js, Go (Golang), Expo, Hugging Face computer vision, and urban object detection. You must strictly adhere to the project constraints in `RULES.txt` and `announcement.txt`.
+
+**Event:** Cursor Hackathon — AI-Driven Kentsel Çözümle | June 6, 2026 | Dozze Coffee Başakşehir
+
+---
+
+## 💻 1. TECH STACK & ARCHITECTURE RULES
+
+### Web Frontend (Next.js) — this repository
+- Use **Next.js App Router** with TypeScript and Tailwind CSS.
+- Deploy to **Vercel**. Production: https://cursor-hackathon-phi.vercel.app
+- Current features: Street View Static API proxy, interactive route map (Leaflet), corridor scanner.
+- API keys (`GOOGLE_STREET_VIEW_API_KEY`) must stay server-side in `.env.local` — never expose via `NEXT_PUBLIC_` or commit to Git.
+- Next.js handles UI and orchestration; heavy CV/detection logic belongs in the Go backend.
+
+### Backend (Go / Golang) — masterfabric-go ONLY
+- **Mandatory repo:** https://github.com/gurkanfikretgunak/masterfabric-go
+- Do NOT build a custom Go architecture. Do NOT use `masterfabric/masterfabric` (that is NestJS/TypeScript — wrong stack).
+- Strictly follow masterfabric-go's clean/hexagonal structure:
+  - `cmd/server/` — entry point (do NOT rewrite init logic)
+  - `internal/domain/` — entities and interfaces
+  - `internal/application/` — use cases
+  - `internal/infrastructure/` — external clients (Street View, Hugging Face, anonymization)
+  - `internal/gateway/` — API gateway pipeline
+- Add hackathon features as new bounded contexts (e.g. `detection`, `urban-scan`) inside existing patterns.
+- Deploy backend to **Render.com** using `deployments/` configs from masterfabric-go.
+- Local dev: `./dev.sh` on port `8080`.
+
+### Cross-Platform Mobile (Expo)
+- Use Expo per hackathon rules. Prefer official template when provided (likely `masterfabric-mobile/masterfabric-expo`).
+- Do not invent a custom mobile architecture.
+
+### AI Models & Datasets — Hugging Face (mandatory)
+- All AI models and datasets must come from **Hugging Face**.
+- Use models suited for urban object detection only (signboards, road damage, trash bins, public infrastructure).
+- Inference runs in Go backend after KVKK anonymization — not on raw images.
+
+### External Data — Google Street View API
+- Use **Street View Static API** exclusively (not Publish API).
+- Check metadata before fetching images to save quota.
+- Stay within the **10,000 free request** limit. Sample routes at ~80m intervals, max ~20 waypoints per scan.
+- Route between points via OSRM; imagery via Google.
+
+### Hosting Summary
+| Layer    | Stack              | Host        |
+|----------|--------------------|-------------|
+| Web      | Next.js            | Vercel      |
+| Backend  | masterfabric-go    | Render.com  |
+| Mobile   | Expo               | Expo        |
+
+---
+
+## 🔄 2. DETECTION PIPELINE (required flow)
+
+When implementing urban object detection, always follow this order:
+
+1. User selects start + end on map → driving route → waypoints
+2. Fetch Street View images at waypoints (server-side)
+3. **Anonymize** faces and license plates (irreversible blur) — KVKK mandatory
+4. Run Hugging Face model on anonymized images
+5. Return detections with geo-coordinates → pin on map + corridor report
+
+Detection output must include: `lat`, `lng`, `distanceM`, `heading`, `objectType`, `confidence`, optional `bbox`.
+
+---
+
+## 🔒 3. KVKK & DATA PRIVACY (CRITICAL — disqualification risk)
+
+- **Purpose limitation:** Detect only inanimate urban objects. No identity, profiling, or tracking.
+- **Strict prohibition:** Face recognition, license plate reading, person/vehicle tracking.
+- **Mandatory anonymization:** Blur faces and plates BEFORE any model inference or training.
+- **Data security:** No raw images in public GitHub repos or unencrypted cloud storage.
+- **Data destruction:** Delete all raw images after hackathon ends; document the deletion.
+- **Secrets:** Never commit `.env.local`, API keys, or HF tokens.
+
+---
+
+## 📈 4. DEVELOPMENT & COMMIT GUIDELINES
+
+- **Incremental commits only.** Single bulk upload at the end = disqualification or point loss.
+- Use conventional commits: `feat:`, `fix:`, `docs:`, `refactor:`, etc.
+- Examples:
+  - `feat: integrate street view corridor scan in next.js`
+  - `feat: add detection use case to masterfabric-go`
+  - `fix: apply irreversible blur before huggingface inference`
+  - `docs: document cursor sdk automation in readme`
+- Jury evaluates development process via commit history.
+
+---
+
+## 🤖 5. AI ADAPTATION & DOCUMENTATION
+
+### Cursor IDE (mandatory)
+- All development in Cursor IDE with this ruleset active.
+
+### README documentation (mandatory for scoring)
+- Document every AI tool, prompt technique, and Cursor feature used.
+- Log architectural decisions and how AI accelerated development.
+- Update `README.md` when introducing new AI patterns.
+
+### Extra points — Cursor CLI & SDK
+- Integrating **Cursor CLI** or **Cursor SDK** into dev workflow or automation earns bonus AI Adaptation points.
+- Must be actually used in the project AND documented in README.
+- Examples: automated commit messages, CI agent tasks, scan pipeline automation.
+
+---
+
+## 🏆 6. DEMO & DELIVERABLES
+
+To qualify for prizes, the team must:
+- Deliver a **live demo** of the working system (not slides-only)
+- Present to the jury
+- Provide runnable source code with commit history
+- Provide KVKK data deletion/anonymization documentation
+
+Scoring weights: Technical execution (30), CV accuracy (25), Public benefit (20), AI adaptation (10), KVKK (10), Documentation (5).
+
+---
+
+## 🚫 7. AGENT BEHAVIOR RULES
+
+- Minimize scope — focused diffs, no unrelated changes.
+- Match existing code conventions in each repo (Next.js vs Go).
+- Do not over-engineer; ship working demo features first.
+- Do not commit secrets or raw street view images.
+- When unsure about backend structure, read masterfabric-go's `internal/` layout before adding code.
+- Prefer extending masterfabric-go over adding logic to Next.js API routes long-term.
+- Write commit messages and README notes in clear English; user may communicate in Turkish.
