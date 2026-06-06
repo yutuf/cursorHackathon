@@ -76,25 +76,27 @@ Navigator shows `engine live` when Go is reachable.
 
 **Google Cloud APIs to enable:** Directions, Geocoding, Places, Street View Static.
 
-## Deploy — Vercel + Go on Render
+## Deploy — Vercel (frontend) + Go in the cloud
 
-### 1) Go backend on Render
+Go **must** be online for the jury — but **Render is not required** (Render often asks for a credit card even on free tier).
 
-**Option A — Blueprint:** connect repo → Render reads [`render.yaml`](render.yaml).
+### 1) Go backend — Koyeb (no credit card, recommended)
 
-**Option B — Manual Web Service:**
+Uses [`backend/Dockerfile`](backend/Dockerfile).
 
-| Setting | Value |
-|---------|-------|
-| Root Directory | `backend` |
-| Runtime | Go |
-| Build Command | `go build -o monumation-api ./cmd/monumation-api` |
-| Start Command | `./monumation-api` |
-| Health Check Path | `/health` |
+1. [koyeb.com](https://www.koyeb.com) → **Sign up with GitHub**
+2. **Create App** → **GitHub** → repo `yutuf/cursorHackathon`
+3. **Builder:** Dockerfile
+4. **Dockerfile path:** `backend/Dockerfile` (or set **Root directory** to `backend`)
+5. **Port:** `8000` (Koyeb sets `PORT` automatically)
+6. Deploy → copy URL, e.g. `https://monumation-go-xxx.koyeb.app`
+7. Test: `https://YOUR-URL/health` → `{"status":"ok"}`
 
-Render sets `PORT` automatically (the Go binary listens on `PORT` or `MONUMATION_PORT`).
+That URL = your `MONUMATION_GO_URL`.
 
-Copy the live URL, e.g. `https://monumation-go-xxxx.onrender.com`.
+**Other hosts (same Docker image):** Fly.io, Google Cloud Run, Railway.
+
+**Render (optional):** only if you accept adding a card — [`render.yaml`](render.yaml) or manual Web Service, root `backend`.
 
 ### 2) Next.js on Vercel
 
@@ -110,12 +112,12 @@ Or connect [github.com/yutuf/cursorHackathon](https://github.com/yutuf/cursorHac
 ```
 GOOGLE_STREET_VIEW_API_KEY=...
 HUGGINGFACE_API_KEY=...
-MONUMATION_GO_URL=https://monumation-go-xxxx.onrender.com
+MONUMATION_GO_URL=https://monumation-go-xxxx.koyeb.app
 ```
 
 Redeploy after adding env vars. Open `/app` and confirm **engine live**.
 
-> **Note:** Render free tier sleeps after inactivity — first request may take ~30s cold start.
+> **Note:** Free tiers may sleep — first request after idle can take ~20–30s.
 
 ## API routes
 
