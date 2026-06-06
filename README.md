@@ -152,6 +152,47 @@ Only landmarks **with a Google photo** count toward scoring and UI. No photo →
 | Engine | Go `monumation-api` | HF Spaces / local |
 | AI | Hugging Face ViT + DETR | HF API |
 | Maps | Google Directions, Places, Street View | Google Cloud |
+| Dev AI | Cursor IDE + Ruleset + Cursor SDK | Local / Vercel |
+
+## AI development — Cursor Ruleset & Cursor SDK
+
+> Hackathon rules require documenting AI tooling in README. We use **Cursor**, not Anthropic Claude CLI/SDK.
+
+### Cursor Ruleset (agentic rules)
+
+- **[`.cursorrules`](.cursorrules)** — project-wide agent rules: Next.js + Go + Hugging Face CV, KVKK constraints, incremental commits, Monumation product scope.
+- **[`docs/RULES.txt`](docs/RULES.txt)** — official hackathon stack & ethics (masterfabric-go, KVKK, Vercel, etc.).
+- **[`docs/announcement.txt`](docs/announcement.txt)** — event brief the agent must follow.
+
+All hackathon code was built in **Cursor IDE** with these rules loaded so the agent stays on-stack (no custom backend rewrite, no face/plate detection, photo-only POI policy).
+
+### Cursor SDK (`@cursor/sdk`) — integrated in product
+
+Optional **municipal opportunity brief** agent for the Bulan/signboard module:
+
+| Piece | Path |
+|-------|------|
+| SDK wrapper | [`lib/cursor-agent.ts`](lib/cursor-agent.ts) — `Agent.prompt()`, model `composer-2.5` |
+| API route | `POST /api/opportunity-brief` |
+| CLI script | `npm run brief` → [`scripts/generate-brief.ts`](scripts/generate-brief.ts) |
+| Fallback template | [`lib/opportunity-brief.ts`](lib/opportunity-brief.ts) when `CURSOR_API_KEY` is unset |
+
+**Runtime:** local agent when developing; cloud agent on Vercel when `CURSOR_API_KEY` + `GITHUB_REPO_URL` are set.
+
+```bash
+# .env.local
+CURSOR_API_KEY=...          # https://cursor.com/dashboard/integrations
+GITHUB_REPO_URL=https://github.com/yutuf/cursorHackathon
+
+npm run brief              # terminal brief via Cursor SDK
+```
+
+**Note:** Main jury demo is **Monumation** (`/app`). Cursor SDK powers the supplementary brief endpoint, not corridor scoring.
+
+### What we did *not* use
+
+- **Anthropic Claude CLI / Claude SDK** — not in this repo.
+- **Expo mobile** — not shipped in this hackathon slice.
 
 ## Learn more
 
